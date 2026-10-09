@@ -54,7 +54,7 @@ Live: **<https://papervault.duckdns.org>**
 **Requirements:** Node 22+, npm, Docker.
 
 ```bash
-git clone https://github.com/<your-username>/papervault.git
+git clone https://github.com/alexinwebs/papervault.git
 cd papervault
 npm install
 cp .env.example .env      # local defaults; add Gmail settings to send real email
