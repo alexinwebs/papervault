@@ -66,6 +66,9 @@ test("a student walks the hierarchy to a paper and can download it", async ({ pa
   await page.locator('a[href^="/papers/"]').first().click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(/Database Management Systems/i);
   await expect(page.getByRole("link", { name: /download/i }).first()).toBeVisible();
+  // The PDF is drawn by pdf.js, so it shows on phones without a built-in viewer too.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId("pdf-pages").locator("canvas").first()).toBeVisible({ timeout: 30_000 });
 });
 
 test("exam-type tabs filter the subject page", async ({ page }) => {

@@ -1,5 +1,19 @@
 # Changelog
 
+## Paper viewer works on phones
+
+### Fixed
+
+- PDFs now render on Android phones. The viewer used the browser's built-in
+  PDF plugin, which mobile Chrome doesn't have, so phones only saw "Your
+  browser cannot display PDFs inline". Pages are now drawn with pdf.js
+  (`pdfjs-dist`, served from `/public/pdfjs`, no CDN, CSP unchanged), so the
+  same viewer, with zoom, works on every device.
+
+### Added
+
+- The upload confirmation links straight to the new paper ("View your upload").
+
 ## One paper, several branches
 
 ### Added

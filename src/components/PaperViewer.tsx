@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, Maximize2, Minus, Plus, RotateCw } from "lucide-react";
+import { PdfPages } from "./PdfPages";
 
 /**
  * Inline viewer for PDFs and scanned images, so a student never has to
@@ -21,16 +22,13 @@ export function PaperViewer({
   const [zoom, setZoom] = useState(100);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const isPdf = mimeType === "application/pdf";
-  const objectRef = useRef<HTMLObjectElement>(null);
 
-  // Some browsers never fire load/error on <object>, which would leave the
-  // "Loading paper…" overlay on screen forever. Clear it after a short grace
-  // period; the embedded viewer (or its fallback link) is visible by then.
+  // Images can fail silently on some browsers; never leave the overlay forever.
   useEffect(() => {
-    if (status !== "loading") return;
-    const timer = window.setTimeout(() => setStatus("ready"), 1_500);
+    if (status !== "loading" || isPdf) return;
+    const timer = window.setTimeout(() => setStatus("ready"), 4_000);
     return () => window.clearTimeout(timer);
-  }, [status]);
+  }, [status, isPdf]);
 
   return (
     <div className="pv-panel-flat overflow-hidden bg-paper">
@@ -86,27 +84,13 @@ export function PaperViewer({
             .
           </p>
         ) : null}
-        <div style={{ width: `${zoom}%` }} className="mx-auto min-w-[280px]">
-          {isPdf ? (
-            <object
-              ref={objectRef}
-              data={`${fileUrl}#view=FitH`}
-              type="application/pdf"
-              className="h-[70vh] w-full border-2 border-ink bg-white"
-              onLoad={() => setStatus("ready")}
-              onError={() => setStatus("error")}
-              aria-label={`Preview of ${fileName}`}
-            >
-              <p className="p-4 font-mono text-xs">
-                Your browser cannot display PDFs inline.{" "}
-                <a className="pv-link" href={downloadUrl}>
-                  Download the paper
-                </a>
-                .
-              </p>
-            </object>
-          ) : (
-            /* eslint-disable-next-line @next/next/no-img-element */
+        {isPdf ? (
+          status === "error" ? null : (
+            <PdfPages fileUrl={fileUrl} zoom={zoom} label={`Preview of ${fileName}`} onStatus={setStatus} />
+          )
+        ) : (
+          <div style={{ width: `${zoom}%` }} className="mx-auto min-w-[280px]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={fileUrl}
               alt={`Scanned paper: ${fileName}`}
@@ -114,8 +98,8 @@ export function PaperViewer({
               onLoad={() => setStatus("ready")}
               onError={() => setStatus("error")}
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

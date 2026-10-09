@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
+import Link from "next/link";
 import { Camera, FileUp, UploadCloud } from "lucide-react";
 import { CameraCapture, type CapturedPage } from "./CameraCapture";
 import { uploadPaperAction } from "@/server/actions/papers";
@@ -76,6 +77,15 @@ export function UploadForm({ colleges }: { colleges: CollegeOption[] }) {
   return (
     <form action={action} className="flex flex-col gap-4">
       <FormBanner state={state} />
+      {state.ok && typeof state.data?.paperId === "string" ? (
+        <Link
+          href={`/papers/${state.data.paperId}`}
+          className="pv-link self-start font-mono text-xs"
+          data-testid="uploaded-paper-link"
+        >
+          View your upload →
+        </Link>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>

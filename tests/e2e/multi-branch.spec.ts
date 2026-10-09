@@ -39,9 +39,7 @@ test("a paper can be listed under several branches", async ({ page }) => {
   await page.getByRole("button", { name: /submit paper/i }).click();
   await expect(page.getByText(/Paper secured/i)).toBeVisible({ timeout: 90_000 });
 
-  // The uploader's newest paper is the one just sent.
-  await page.goto("/library");
-  const href = await page.locator('a[href^="/papers/"]', { hasText: SUBJECT }).first().getAttribute("href");
+  const href = await page.getByTestId("uploaded-paper-link").getAttribute("href");
   const paperId = href!.split("/").pop()!;
 
   await page.getByRole("button", { name: /sign out/i }).click();
