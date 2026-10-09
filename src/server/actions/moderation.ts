@@ -7,6 +7,7 @@ import { assertCanModerate, assertPlatformAdmin } from "../authz";
 import { moderationDecisionSchema, resolveReportSchema, updateRoleSchema } from "../validators";
 import { decide, resolveReport } from "../services/moderation";
 import { changeRole } from "../services/admin";
+import { setPaperListings } from "../services/listings";
 import { run, zodErrors, type ActionState } from "./types";
 
 export async function moderateAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -48,5 +49,28 @@ export async function updateRoleAction(_prev: ActionState, formData: FormData): 
     const after = await changeRole(actor, parsed.data);
     revalidatePath("/admin");
     return { ok: true, message: `${after.name} is now ${after.role.replace(/_/g, " ").toLowerCase()}.` };
+  });
+}
+
+export async function setPaperListingsAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return run(async () => {
+    const user = await requireUser();
+    assertCanModerate(user);
+    const paperId = String(formData.get("paperId") ?? "");
+    if (!paperId) return { ok: false, message: "Missing paper." };
+    const subjectIds = formData.getAll("subjectIds").map((value) => String(value));
+    const ids = await setPaperListings(user, { paperId, subjectIds });
+    revalidatePath(`/papers/${paperId}`);
+    revalidatePath(`/moderation/${paperId}`);
+    return {
+      ok: true,
+      message:
+        ids.length === 0
+          ? "Saved. The paper is listed under its own branch only."
+          : `Saved. Also listed under ${ids.length} other branch${ids.length === 1 ? "" : "es"}.`,
+    };
   });
 }

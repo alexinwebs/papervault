@@ -15,6 +15,8 @@ import { collegeIdOfPaper, findDuplicateCandidates } from "@/server/services/pap
 import { paperContext } from "@/lib/links";
 import { formatBytes, formatDate } from "@/lib/utils";
 import { prisma } from "@/lib/db";
+import { PaperListingsForm } from "@/components/PaperListingsForm";
+import { siblingSubjects } from "@/server/services/listings";
 
 export const metadata: Metadata = { title: "Review paper", robots: { index: false } };
 
@@ -49,6 +51,18 @@ export default async function ReviewPage({
   ]);
 
   const otherCandidates = duplicates.filter((d) => d.id !== paper.id);
+
+  const siblings = await siblingSubjects(paper.paperSet.examSession.subject.id);
+  const listedIds = new Set(paper.listings.map((l) => l.subject.id));
+  const listingOptions = [
+    ...siblings,
+    ...paper.listings.map((l) => l.subject).filter((s) => !siblings.some((x) => x.id === s.id)),
+  ].map((s) => ({
+    id: s.id,
+    label: `${s.semester.branch.code} · Sem ${s.semester.number}`,
+    detail: `${s.semester.branch.name} — ${s.name} (${s.code})`,
+    checked: listedIds.has(s.id),
+  }));
 
   return (
     <div className="flex flex-col gap-5">
@@ -117,6 +131,15 @@ export default async function ReviewPage({
               for 30 days.
             </p>
             <SoftDeleteForm paperId={paper.id} />
+          </Panel>
+
+          <Panel className="px-4 py-4" testId="listings-panel">
+            <SectionHeader title="Also for other branches" />
+            <p className="mb-2 font-sans text-[11px] leading-relaxed text-ink/70">
+              Tick every branch that sat this exact paper. It then appears on that branch&apos;s
+              subject page and in its search results.
+            </p>
+            <PaperListingsForm paperId={paper.id} options={listingOptions} />
           </Panel>
 
           <Panel className="px-4 py-4">

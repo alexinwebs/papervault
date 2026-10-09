@@ -13,6 +13,9 @@ type Subject = { id: string; name: string; code: string };
 type Semester = { id: string; number: number; subjects: Subject[] };
 type Branch = { id: string; name: string; code: string; semesters: Semester[] };
 type Program = { id: string; name: string; branches: Branch[] };
+
+/** Same normalisation as the server's subjectKey(): case and punctuation don't matter. */
+const subjectKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "");
 export type CollegeOption = {
   id: string;
   name: string;
@@ -26,6 +29,8 @@ export function UploadForm({ colleges }: { colleges: CollegeOption[] }) {
   const [programId, setProgramId] = useState("");
   const [branchId, setBranchId] = useState("");
   const [semesterId, setSemesterId] = useState("");
+  const [subjectId, setSubjectId] = useState("");
+  const [alsoIds, setAlsoIds] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<"file" | "camera">("file");
   const [pages, setPages] = useState<CapturedPage[]>([]);
@@ -34,6 +39,24 @@ export function UploadForm({ colleges }: { colleges: CollegeOption[] }) {
   const program = college?.programs.find((p) => p.id === programId);
   const branch = program?.branches.find((b) => b.id === branchId);
   const semester = branch?.semesters.find((s) => s.id === semesterId);
+  const subject = semester?.subjects.find((s) => s.id === subjectId);
+
+  // The same subject in the program's other branches: matching code, or the
+  // same name. A DBMS paper for CSE is usually the one IT and IoT sat too.
+  const siblings = useMemo(() => {
+    if (!program || !branch || !subject) return [];
+    const code = subject.code.trim().toLowerCase();
+    const key = subjectKey(subject.name);
+    return program.branches
+      .filter((b) => b.id !== branch.id)
+      .flatMap((b) =>
+        b.semesters.flatMap((sem) =>
+          sem.subjects
+            .filter((x) => (code && x.code.trim().toLowerCase() === code) || subjectKey(x.name) === key)
+            .map((x) => ({ ...x, branch: b, semesterNumber: sem.number })),
+        ),
+      );
+  }, [program, branch, subject]);
 
   const capturedBytes = useMemo(
     // base64 is ~4/3 of the binary size; close enough to warn before upload.
@@ -69,6 +92,8 @@ export function UploadForm({ colleges }: { colleges: CollegeOption[] }) {
               setProgramId("");
               setBranchId("");
               setSemesterId("");
+              setSubjectId("");
+              setAlsoIds([]);
             }}
             required
           >
@@ -95,6 +120,8 @@ export function UploadForm({ colleges }: { colleges: CollegeOption[] }) {
               setProgramId(e.target.value);
               setBranchId("");
               setSemesterId("");
+              setSubjectId("");
+              setAlsoIds([]);
             }}
             disabled={!college}
             required
@@ -121,6 +148,8 @@ export function UploadForm({ colleges }: { colleges: CollegeOption[] }) {
             onChange={(e) => {
               setBranchId(e.target.value);
               setSemesterId("");
+              setSubjectId("");
+              setAlsoIds([]);
             }}
             disabled={!program}
             required
@@ -144,7 +173,11 @@ export function UploadForm({ colleges }: { colleges: CollegeOption[] }) {
             name="semesterId"
             className="pv-input"
             value={semesterId}
-            onChange={(e) => setSemesterId(e.target.value)}
+            onChange={(e) => {
+              setSemesterId(e.target.value);
+              setSubjectId("");
+              setAlsoIds([]);
+            }}
             disabled={!branch}
             required
           >
@@ -162,7 +195,18 @@ export function UploadForm({ colleges }: { colleges: CollegeOption[] }) {
           <label className="pv-label" htmlFor="subjectId">
             Subject
           </label>
-          <select id="subjectId" name="subjectId" className="pv-input" disabled={!semester} required>
+          <select
+            id="subjectId"
+            name="subjectId"
+            className="pv-input"
+            value={subjectId}
+            onChange={(e) => {
+              setSubjectId(e.target.value);
+              setAlsoIds([]);
+            }}
+            disabled={!semester}
+            required
+          >
             <option value="">Select a subject</option>
             {semester?.subjects.map((s) => (
               <option key={s.id} value={s.id}>
@@ -239,6 +283,64 @@ export function UploadForm({ colleges }: { colleges: CollegeOption[] }) {
           <input id="setLabel" name="setLabel" className="pv-input" defaultValue="Set A" maxLength={20} />
         </div>
       </div>
+
+      {subject ? (
+        <fieldset className="border-2 border-ink rounded-sm bg-paper px-4 py-3" data-testid="also-branches">
+          <legend className="pv-label px-1">
+            Also for other branches <span className="normal-case tracking-normal">(optional)</span>
+          </legend>
+          {siblings.length > 0 ? (
+            <>
+              <p className="mb-2 font-sans text-[11px] leading-relaxed text-ink/70">
+                Was this exact paper also set for other {program?.name} branches? Tick each one and the
+                paper will appear under that branch&apos;s {subject.name} page too.
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {siblings.map((s) => (
+                  <label key={s.id} className="flex items-start gap-2 font-sans text-sm">
+                    <input
+                      type="checkbox"
+                      name="alsoSubjectIds"
+                      value={s.id}
+                      className="mt-1"
+                      checked={alsoIds.includes(s.id)}
+                      onChange={(e) =>
+                        setAlsoIds((ids) =>
+                          e.target.checked ? [...ids, s.id] : ids.filter((id) => id !== s.id),
+                        )
+                      }
+                    />
+                    <span>
+                      <strong>{s.branch.code}</strong> · {s.branch.name} · Semester {s.semesterNumber}
+                      <span className="text-ink/60">
+                        {" "}
+                        — {s.name} ({s.code})
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {siblings.length > 1 ? (
+                <button
+                  type="button"
+                  className="mt-2 font-mono text-[11px] underline"
+                  onClick={() =>
+                    setAlsoIds(alsoIds.length === siblings.length ? [] : siblings.map((s) => s.id))
+                  }
+                >
+                  {alsoIds.length === siblings.length ? "Clear all" : "Select all branches"}
+                </button>
+              ) : null}
+            </>
+          ) : (
+            <p className="font-sans text-[11px] leading-relaxed text-ink/70">
+              No other {program?.name} branch lists {subject.name}. If another branch sat this paper
+              under a different subject name, mention it in the notes and a moderator can add it.
+            </p>
+          )}
+          <FieldError error={state.fieldErrors?.alsoSubjectIds} />
+        </fieldset>
+      ) : null}
 
       <div>
         <span className="pv-label">

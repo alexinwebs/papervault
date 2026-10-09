@@ -175,6 +175,7 @@ model Subject {
   sessions          ExamSession[]
   requests          PaperRequest[]
   fromRequests      SubjectRequest[]
+  paperListings     PaperListing[]
 
   @@unique([semesterId, slug])
   @@index([name])
@@ -264,12 +265,29 @@ model Paper {
   views      PaperView[]
   events     PaperEvent[]
   comments   Comment[]
+  /// Extra subjects (usually the same subject in other branches) this paper
+  /// is also listed under. The primary placement stays on the paper set.
+  listings   PaperListing[]
 
   @@index([status])
   @@index([paperSetId])
   @@index([contentHash])
   @@index([title(ops: raw("gin_trgm_ops"))], type: Gin, map: "Paper_title_trgm_idx")
   @@index([extractedText(ops: raw("gin_trgm_ops"))], type: Gin, map: "Paper_extractedText_trgm_idx")
+}
+
+/// "This DBMS paper is also for IT, IoT and DS": one row per extra subject.
+model PaperListing {
+  id        String   @id @default(cuid())
+  paperId   String
+  subjectId String
+  createdAt DateTime @default(now())
+
+  paper   Paper   @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([paperId, subjectId])
+  @@index([subjectId])
 }
 
 model PaperFile {

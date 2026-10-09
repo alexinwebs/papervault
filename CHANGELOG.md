@@ -1,5 +1,23 @@
 # Changelog
 
+## One paper, several branches
+
+### Added
+
+- **Multi-branch papers.** When a paper was set for several branches (say
+  DBMS for CSE, IT, IoT and DS), the uploader ticks the other branches on the
+  upload form instead of uploading it again. The form suggests subjects in
+  sibling branches of the same program with the same code or name, with a
+  "Select all branches" shortcut.
+- The paper then shows on each listed subject's page, in related papers and in
+  subject/branch search. Its page has an "Also for" row linking each branch.
+- Moderators (own college) and admins can change the branches from the review
+  page ("Also for other branches"); every change is audited
+  (`paper.listings_updated`).
+- New `PaperListing` table (migration `20261009120000_paper_listings`). It is
+  additive, so existing papers are unaffected; `prisma migrate deploy` applies
+  it on the next deploy.
+
 ## Launch switches
 
 ### Added

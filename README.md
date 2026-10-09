@@ -18,6 +18,8 @@ Live: **<https://papervault.duckdns.org>**
   pin your colleges to the sidebar.
 - **Contribute:** upload PDFs or images. Every file is virus-scanned (ClamAV), checked for
   duplicates and sent to moderation.
+- **Multi-branch papers:** one upload can be listed under the same subject in several branches
+  (e.g. DBMS for CSE, IT, IoT and DS), so shared papers aren't uploaded again.
 - **Moderation:** approve, reject, restrict, or send back for changes. Moderators can be scoped to
   a college. Current-exam papers are protected.
 - **Discussion:** comments on papers, paper requests, bookmarks and an in-app inbox.

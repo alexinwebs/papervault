@@ -48,6 +48,10 @@ export async function uploadPaperAction(
     const entries = Object.fromEntries(formData) as Record<string, unknown>;
     const parsed = uploadMetadataSchema.safeParse(entries);
     if (!parsed.success) return { ok: false, fieldErrors: zodErrors(parsed.error) };
+    const alsoSubjectIds = formData
+      .getAll("alsoSubjectIds")
+      .map((value) => String(value))
+      .filter(Boolean);
 
     let bytes: Buffer;
     let name: string;
@@ -87,6 +91,7 @@ export async function uploadPaperAction(
         ...parsed.data,
         sessionLabel: parsed.data.sessionLabel || undefined,
         notes: parsed.data.notes || undefined,
+        alsoSubjectIds,
       },
       file: { name, type, bytes },
     });

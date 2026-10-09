@@ -95,17 +95,24 @@ export async function searchEverything(rawQuery: string, page = 1, pageSize = 20
 
   // 3. Flat paper filter on resolved ids.
   const sessionFilter: Record<string, unknown> = {};
+  // Papers cross-listed under another branch's copy of the subject must turn
+  // up for "dbms it" just like ones uploaded there directly.
+  let listingSubject: Record<string, unknown> | null = null;
   if (subjects.length > 0 && subjectWords.length > 0) {
     sessionFilter.subjectId = { in: subjects.map((subject) => subject.id) };
+    listingSubject = { id: { in: subjects.map((subject) => subject.id) } };
   } else if (branchIds.length > 0) {
     sessionFilter.subject = { semester: { branchId: { in: branchIds } } };
+    listingSubject = { semester: { branchId: { in: branchIds } } };
   } else if (collegeIds.length > 0) {
     sessionFilter.subject = {
       semester: { branch: { program: { collegeId: { in: collegeIds } } } },
     };
   }
-  if (examTypeIds.length > 0) sessionFilter.examTypeId = { in: examTypeIds };
-  if (years.length > 0) sessionFilter.academicYear = { in: years };
+  const slotFilter: Record<string, unknown> = {};
+  if (examTypeIds.length > 0) slotFilter.examTypeId = { in: examTypeIds };
+  if (years.length > 0) slotFilter.academicYear = { in: years };
+  Object.assign(sessionFilter, slotFilter);
 
   const matchedSomething = Object.keys(sessionFilter).length > 0;
   // When the query does not resolve to anything in the hierarchy, fall back to
@@ -113,7 +120,15 @@ export async function searchEverything(rawQuery: string, page = 1, pageSize = 20
   // so a phrase from inside a paper still finds it.
   const freeText = (words.length > 0 ? words : [query]).filter((word) => word.length >= 3);
   const paperWhere = matchedSomething
-    ? { ...PUBLIC_PAPER_WHERE, paperSet: { examSession: sessionFilter } }
+    ? listingSubject
+      ? {
+          ...PUBLIC_PAPER_WHERE,
+          OR: [
+            { paperSet: { examSession: sessionFilter } },
+            { listings: { some: { subject: listingSubject } }, paperSet: { examSession: slotFilter } },
+          ],
+        }
+      : { ...PUBLIC_PAPER_WHERE, paperSet: { examSession: sessionFilter } }
     : {
         ...PUBLIC_PAPER_WHERE,
         OR: [

@@ -1,10 +1,36 @@
 import { prisma } from "@/lib/db";
+import { underSubject } from "../services/listings";
 
 export const PUBLIC_PAPER_WHERE = { status: "PUBLISHED", restricted: false } as const;
 
 export const paperCardInclude = {
   files: { select: { id: true, mimeType: true, sizeBytes: true, pageCount: true } },
   uploadedBy: { select: { id: true, name: true, trustLevel: true } },
+  listings: {
+    select: {
+      subject: {
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+          code: true,
+          semester: {
+            select: {
+              number: true,
+              branch: {
+                select: {
+                  slug: true,
+                  code: true,
+                  name: true,
+                  program: { select: { slug: true, college: { select: { slug: true } } } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
   paperSet: {
     include: {
       examSession: {
@@ -25,15 +51,7 @@ export const paperCardInclude = {
 
 export function publicPapersForSubject(subjectId: string, examTypeCode?: string) {
   return prisma.paper.findMany({
-    where: {
-      ...PUBLIC_PAPER_WHERE,
-      paperSet: {
-        examSession: {
-          subjectId,
-          ...(examTypeCode ? { examType: { code: examTypeCode } } : {}),
-        },
-      },
-    },
+    where: { ...PUBLIC_PAPER_WHERE, ...underSubject(subjectId, examTypeCode) },
     include: paperCardInclude,
     orderBy: [{ createdAt: "desc" }],
   });
@@ -65,7 +83,7 @@ export function relatedPapers(paperId: string, subjectId: string, limit = 5) {
     where: {
       ...PUBLIC_PAPER_WHERE,
       id: { not: paperId },
-      paperSet: { examSession: { subjectId } },
+      ...underSubject(subjectId),
     },
     include: paperCardInclude,
     orderBy: { createdAt: "desc" },

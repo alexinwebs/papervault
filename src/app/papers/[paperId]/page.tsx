@@ -15,7 +15,7 @@ import { canModerate } from "@/server/authz";
 import { Discussion, type DiscussionComment } from "@/components/Discussion";
 import { listComments } from "@/server/services/comments";
 import { prisma } from "@/lib/db";
-import { paperContext, collegeHref } from "@/lib/links";
+import { paperContext, collegeHref, subjectHref } from "@/lib/links";
 import { formatBytes, formatDate } from "@/lib/utils";
 
 type Params = {
@@ -191,6 +191,29 @@ export default async function PaperPage({ params, searchParams }: Params) {
                 </div>
               ))}
             </dl>
+            {paper.listings.length > 0 ? (
+              <div className="mt-3" data-testid="also-for">
+                <p className="pv-eyebrow">Also for</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {paper.listings.map(({ subject }) => (
+                    <Link
+                      key={subject.id}
+                      href={subjectHref(
+                        subject.semester.branch.program.college.slug,
+                        subject.semester.branch.program.slug,
+                        subject.semester.branch.slug,
+                        subject.semester.number,
+                        subject.slug,
+                      )}
+                      className="pv-chip bg-cream hover:bg-blue-soft"
+                      title={`${subject.semester.branch.name} · Semester ${subject.semester.number} · ${subject.name}`}
+                    >
+                      {subject.semester.branch.code} · Sem {subject.semester.number}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <Link href={`/contributors/${paper.uploadedBy.id}`} className="pv-btn-secondary mt-4 w-full">
               View contributor
             </Link>

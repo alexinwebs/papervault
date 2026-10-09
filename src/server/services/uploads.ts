@@ -17,6 +17,7 @@ import type { SessionUser } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { extractPdfText, pdfPageCount, sanitizePdf } from "@/lib/pdf";
 import { assertClean, scanUpload } from "@/lib/scanner";
+import { resolveListingSubjects } from "./listings";
 
 const MAGIC: Array<{ mime: string; test: (b: Buffer) => boolean }> = [
   { mime: "application/pdf", test: (b) => b.subarray(0, 5).toString("latin1") === "%PDF-" },
@@ -49,6 +50,8 @@ export type UploadMetadata = {
   notes?: string;
   /** Uploader's declaration. CURRENT / UPCOMING are refused outright. */
   examClassification?: ExamClassification;
+  /** The same subject in other branches this paper is also for (e.g. IT, IoT). */
+  alsoSubjectIds?: string[];
 };
 
 /**
@@ -69,6 +72,11 @@ export async function submitPaper(input: {
   }
   const chain = await assertAcademicChain(input.metadata);
   if (!chain) throw validation("That subject does not belong to the selected college structure.");
+  const alsoSubjectIds = await resolveListingSubjects({
+    collegeId: chain.college.id,
+    primarySubjectId: chain.subject.id,
+    subjectIds: input.metadata.alsoSubjectIds ?? [],
+  });
 
   const { bytes: original } = input.file;
   if (original.byteLength === 0) throw validation("The uploaded file is empty.");
@@ -181,6 +189,12 @@ export async function submitPaper(input: {
           pageCount,
         },
       });
+      if (alsoSubjectIds.length > 0) {
+        await tx.paperListing.createMany({
+          data: alsoSubjectIds.map((subjectId) => ({ paperId: created.id, subjectId })),
+          skipDuplicates: true,
+        });
+      }
       return { paper: created, key: storageKey };
     },
     { maxWait: 10_000, timeout: 20_000 },
@@ -246,7 +260,11 @@ export async function submitPaper(input: {
     action: "paper.uploaded",
     entityType: "Paper",
     entityId: paper.id,
-    after: { subject: chain.subject.name, year: input.metadata.academicYear },
+    after: {
+      subject: chain.subject.name,
+      year: input.metadata.academicYear,
+      ...(alsoSubjectIds.length > 0 ? { alsoListedUnder: alsoSubjectIds } : {}),
+    },
   });
 
   return { paperId: paper.id };
