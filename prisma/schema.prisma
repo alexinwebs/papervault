@@ -1,0 +1,821 @@
+// PaperVault data model.
+// PostgreSQL in every environment (docker compose up db for local work).
+// Allowed enum-like values live in src/lib/constants.ts and are enforced by Zod + services.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("STUDENT") // STUDENT | TEACHER | MODERATOR | COLLEGE_ADMIN | PLATFORM_ADMIN
+  trustLevel   String   @default("NEW") // NEW | VERIFIED_CONTRIBUTOR | TRUSTED_CONTRIBUTOR
+  collegeId    String? // tenant scope for MODERATOR / COLLEGE_ADMIN
+  createdAt    DateTime @default(now())
+
+  /// Set once the user proves control of the mailbox.
+  emailVerifiedAt   DateTime?
+  /// Sessions issued before this instant are rejected (password change, ban).
+  credentialsSetAt  DateTime  @default(now())
+  /// Base32 TOTP secret. Present means 2FA is set up; confirmed means enforced.
+  totpSecret        String?
+  totpConfirmedAt   DateTime?
+  /// SHA-256 hashes of unused recovery codes, one per row of the JSON array.
+  totpRecovery      String?
+  /// Per-user email preferences.
+  notifyOnDecision  Boolean   @default(true)
+  notifyOnReply     Boolean   @default(true)
+  notifyDigest      Boolean   @default(false)
+  bannedAt          DateTime?
+  banReason         String?
+  /// Account standing: ACTIVE | WARNED | RESTRICTED | SUSPENDED | BANNED.
+  /// BANNED mirrors bannedAt; SUSPENDED blocks sign-in until statusUntil;
+  /// RESTRICTED can browse but cannot upload, comment or report.
+  status            String    @default("ACTIVE")
+  statusReason      String?
+  statusUntil       DateTime?
+  /// Set while a teacher verification is approved; cleared on revocation.
+  teacherVerifiedAt DateTime?
+  /// Set when the person exercised their right to erasure. The row survives so
+  /// the papers they contributed keep a stable author reference, but every
+  /// identifying field has been overwritten.
+  anonymizedAt      DateTime?
+
+  college          College?            @relation(fields: [collegeId], references: [id])
+  papers           Paper[]             @relation("uploader")
+  reviews          Paper[]             @relation("reviewer")
+  bookmarks        Bookmark[]
+  pinnedColleges   UserPinnedCollege[]
+  reports          Report[]
+  requests         PaperRequest[]
+  views            PaperView[]
+  auditLogs        AuditLog[]
+  takedownsHandled TakedownRequest[]
+  comments         Comment[]
+  sessions         Session[]
+  tokens           AuthToken[]
+  inboxMessages    InboxMessage[]
+  papersDeleted    Paper[]             @relation("PaperDeletedBy")
+
+  teacherRequests     TeacherVerificationRequest[] @relation("teacherApplicant")
+  teacherReviews      TeacherVerificationRequest[] @relation("teacherReviewer")
+  tickets             SupportTicket[]              @relation("ticketRequester")
+  ticketsAssigned     SupportTicket[]              @relation("ticketAssignee")
+  ticketMessages      TicketMessage[]
+  userReportsFiled    UserReport[]                 @relation("userReportReporter")
+  userReportsReceived UserReport[]                 @relation("userReportTarget")
+
+  @@index([collegeId])
+  @@index([role])
+  @@index([status])
+}
+
+model College {
+  id         String   @id @default(cuid())
+  slug       String   @unique
+  name       String
+  shortName  String
+  city       String
+  state      String
+  university String
+  verified   Boolean  @default(false)
+  /// Home campus: pinned to the top of every college list.
+  featured   Boolean  @default(false)
+  about      String?
+  accent     String   @default("blue") // design token key for card color
+  createdAt  DateTime @default(now())
+
+  programs        Program[]
+  examTypes       ExamType[]
+  users           User[]
+  pinnedBy        UserPinnedCollege[]
+  teacherRequests TeacherVerificationRequest[]
+  fromRequest     CollegeRequest[]             @relation("collegeFromRequest")
+  subjectRequests SubjectRequest[]             @relation("subjectRequestCollege")
+
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "College_name_trgm_idx")
+}
+
+model Program {
+  id            String  @id @default(cuid())
+  collegeId     String
+  slug          String // btech | mtech | mca | mba ...
+  name          String
+  level         String  @default("UG") // UG | PG
+  semesterCount Int     @default(8)
+  archived      Boolean @default(false)
+
+  college  College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  branches Branch[]
+
+  @@unique([collegeId, slug])
+  @@index([collegeId])
+}
+
+model Branch {
+  id        String  @id @default(cuid())
+  programId String
+  slug      String
+  name      String
+  code      String
+  archived  Boolean @default(false)
+
+  program   Program             @relation(fields: [programId], references: [id], onDelete: Cascade)
+  semesters Semester[]
+  curricula CurriculumVersion[]
+
+  @@unique([programId, slug])
+  @@index([programId])
+}
+
+model CurriculumVersion {
+  id            String  @id @default(cuid())
+  branchId      String
+  label         String // "Curriculum 2022"
+  effectiveYear Int
+  isCurrent     Boolean @default(false)
+
+  branch   Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  subjects Subject[]
+
+  @@unique([branchId, label])
+}
+
+model Semester {
+  id       String @id @default(cuid())
+  branchId String
+  number   Int
+
+  branch          Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  subjects        Subject[]
+  subjectRequests SubjectRequest[]
+
+  @@unique([branchId, number])
+}
+
+model Subject {
+  id                  String  @id @default(cuid())
+  semesterId          String
+  curriculumVersionId String?
+  slug                String
+  name                String
+  code                String
+  archived            Boolean @default(false)
+
+  semester          Semester           @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  curriculumVersion CurriculumVersion? @relation(fields: [curriculumVersionId], references: [id])
+  sessions          ExamSession[]
+  requests          PaperRequest[]
+  fromRequests      SubjectRequest[]
+
+  @@unique([semesterId, slug])
+  @@index([name])
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Subject_name_trgm_idx")
+}
+
+model ExamType {
+  id        String @id @default(cuid())
+  collegeId String
+  code      String // CT | ST | MID_SEM | END_SEM
+  name      String
+  sortOrder Int    @default(0)
+
+  college  College        @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  sessions ExamSession[]
+  requests PaperRequest[]
+
+  @@unique([collegeId, code])
+}
+
+/// One real exam occurrence: subject + exam type + academic year (+ optional session label).
+model ExamSession {
+  id           String  @id @default(cuid())
+  subjectId    String
+  examTypeId   String
+  academicYear Int
+  sessionLabel String? // "Even 2024-25", "Nov 2025"
+
+  subject  Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  examType ExamType   @relation(fields: [examTypeId], references: [id], onDelete: Cascade)
+  sets     PaperSet[]
+
+  @@unique([subjectId, examTypeId, academicYear, sessionLabel])
+  @@index([academicYear])
+}
+
+/// A paper set inside a session ("Set A"). Canonical paper container.
+model PaperSet {
+  id            String @id @default(cuid())
+  examSessionId String
+  label         String @default("Set A")
+
+  examSession ExamSession @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
+  papers      Paper[]
+
+  @@unique([examSessionId, label])
+}
+
+model Paper {
+  id                 String    @id @default(cuid())
+  paperSetId         String
+  title              String
+  status             String    @default("DRAFT") // see PAPER_STATUS
+  verification       String    @default("UNVERIFIED") // see VERIFICATION
+  restricted         Boolean   @default(false)
+  restrictedReason   String?
+  /// CURRENT | UPCOMING | PAST | RELEASED | UNKNOWN. Only PAST/RELEASED may publish.
+  examClassification String    @default("UNKNOWN")
+  uploadedById       String
+  reviewedById       String?
+  reviewNote         String?
+  publishedAt        DateTime?
+  downloadCount      Int       @default(0)
+  canonicalId        String? // set when merged into another paper
+  /// Soft delete: rows stay for the recycle bin until purged.
+  deletedAt          DateTime?
+  deletedById        String?
+  deletedBy          User?     @relation("PaperDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+  /// Text pulled out of the file on ingest so search can look inside papers.
+  extractedText      String?
+  /// SHA-256 of the normalised extracted text. Two scans of the same paper
+  /// produce different file bytes but the same content hash, so this is what
+  /// actually stops the same paper being uploaded twice.
+  contentHash        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  paperSet   PaperSet          @relation(fields: [paperSetId], references: [id], onDelete: Cascade)
+  uploadedBy User              @relation("uploader", fields: [uploadedById], references: [id])
+  reviewedBy User?             @relation("reviewer", fields: [reviewedById], references: [id])
+  canonical  Paper?            @relation("canonical", fields: [canonicalId], references: [id])
+  duplicates Paper[]           @relation("canonical")
+  files      PaperFile[]
+  bookmarks  Bookmark[]
+  reports    Report[]
+  takedowns  TakedownRequest[]
+  views      PaperView[]
+  events     PaperEvent[]
+  comments   Comment[]
+
+  @@index([status])
+  @@index([paperSetId])
+  @@index([contentHash])
+  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin, map: "Paper_title_trgm_idx")
+  @@index([extractedText(ops: raw("gin_trgm_ops"))], type: Gin, map: "Paper_extractedText_trgm_idx")
+}
+
+model PaperFile {
+  id           String   @id @default(cuid())
+  paperId      String
+  storageKey   String   @unique
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  sha256       String
+  pageCount    Int?
+  createdAt    DateTime @default(now())
+
+  paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+
+  @@index([sha256])
+}
+
+model PaperEvent {
+  id        String   @id @default(cuid())
+  paperId   String
+  fromState String?
+  toState   String
+  actorId   String?
+  note      String?
+  createdAt DateTime @default(now())
+
+  paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+}
+
+model PaperRequest {
+  id            String   @id @default(cuid())
+  subjectId     String
+  examTypeId    String
+  academicYear  Int
+  requestedById String
+  fulfilled     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  examType    ExamType @relation(fields: [examTypeId], references: [id], onDelete: Cascade)
+  requestedBy User     @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+
+  @@unique([subjectId, examTypeId, academicYear, requestedById])
+}
+
+/// A college a user keeps handy. Private to that user: never shown to
+/// anyone else, never counted publicly, never used for ranking.
+model UserPinnedCollege {
+  userId    String
+  collegeId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  college College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, collegeId])
+  @@index([userId, createdAt])
+  @@index([collegeId])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  paperId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, paperId])
+}
+
+model PaperView {
+  id       String   @id @default(cuid())
+  userId   String
+  paperId  String
+  viewedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, paperId])
+}
+
+model Report {
+  id           String    @id @default(cuid())
+  paperId      String
+  /// Set when the report is about a discussion comment rather than the paper.
+  commentId    String?
+  reportedById String
+  reason       String // see REPORT_REASONS
+  details      String?
+  status       String    @default("OPEN") // OPEN | RESOLVED | DISMISSED
+  resolution   String?
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  paper      Paper    @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  comment    Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reportedBy User     @relation(fields: [reportedById], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([commentId])
+}
+
+/// A copyright or privacy notice filed by a rights holder, who is normally not
+/// a registered user. Kept separate from Report, which is always attributable
+/// to a signed-in account.
+model TakedownRequest {
+  id              String    @id @default(cuid())
+  /// The URL the claimant gave us, kept verbatim even if we resolve a paper.
+  paperUrl        String
+  paperId         String?
+  claimantName    String
+  claimantEmail   String
+  claimantOrg     String?
+  /// "RIGHTS_HOLDER" | "AUTHORISED_AGENT" | "SUBJECT_OF_DATA"
+  claimantRole    String
+  reason          String
+  /// The claimant affirmed the good-faith statement on the form.
+  statementSigned Boolean   @default(false)
+  status          String    @default("OPEN") // OPEN | UNDER_REVIEW | ACTIONED | REJECTED | REVIEW_REQUESTED | RESTORED | CLOSED
+  resolution      String?
+  handledById     String?
+  handledAt       DateTime?
+  createdAt       DateTime  @default(now())
+
+  paper     Paper? @relation(fields: [paperId], references: [id], onDelete: SetNull)
+  handledBy User?  @relation(fields: [handledById], references: [id], onDelete: SetNull)
+
+  /// Uploader's counter-notice / review request after action was taken.
+  reviewRequest     String?
+  reviewRequestedAt DateTime?
+
+  @@index([status, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  before     String? // JSON string
+  after      String? // JSON string
+  createdAt  DateTime @default(now())
+
+  /// Why the action was taken, where one was given.
+  reason String?
+  actor  User?   @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([action])
+  @@index([actorId])
+}
+
+/// Outbox for transactional email. Rows are written even when SMTP is not
+/// configured, so the admin can always see what would have been sent.
+/// In-app notification. Email delivery is best-effort and opt-out, so the
+/// inbox is the durable record a student can always come back to.
+model InboxMessage {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  /// Where the bell should take the reader.
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+model Notification {
+  id            String    @id @default(cuid())
+  type          String // paper.submitted | paper.approved | paper.rejected | paper.changes_requested | paper.restricted
+  channel       String    @default("EMAIL")
+  toEmail       String
+  toUserId      String?
+  paperId       String?
+  subject       String
+  body          String
+  status        String    @default("QUEUED") // QUEUED | SENT | FAILED | SKIPPED
+  error         String?
+  /// Delivery attempts made so far, so the retry job can give up eventually.
+  attempts      Int       @default(0)
+  lastAttemptAt DateTime?
+  createdAt     DateTime  @default(now())
+  sentAt        DateTime?
+
+  @@index([status])
+  @@index([paperId])
+  @@index([createdAt])
+}
+
+/// Server-side session record so sign-out, bans and role changes can revoke a
+/// cookie immediately instead of waiting for the JWT to expire.
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  userAgent  String?
+  ip         String?
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Single-use, hashed tokens for email verification and password resets.
+model AuthToken {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String // EMAIL_VERIFY | PASSWORD_RESET
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([expiresAt])
+}
+
+/// Threaded discussion under a paper: doubts, corrections, answer hints.
+model Comment {
+  id            String    @id @default(cuid())
+  paperId       String
+  authorId      String
+  parentId      String?
+  body          String
+  status        String    @default("PUBLISHED") // PUBLISHED | REMOVED
+  editedAt      DateTime?
+  removedById   String?
+  removedReason String?
+  createdAt     DateTime  @default(now())
+
+  paper   Paper     @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  author  User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent  Comment?  @relation("thread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("thread")
+  reports Report[]
+
+  @@index([paperId, createdAt])
+  @@index([parentId])
+  @@index([authorId])
+}
+
+/**
+ * ------------------------------------------------------------------------
+ */
+/**
+ * Teacher verification
+ */
+/**
+ * ------------------------------------------------------------------------
+ */
+
+/// A user's application to be recognised as teaching staff. Reviewed by a
+/// platform admin; approval grants the TEACHER role server-side.
+model TeacherVerificationRequest {
+  id                 String    @id @default(cuid())
+  userId             String
+  /// PENDING | UNDER_REVIEW | NEEDS_MORE_INFORMATION | APPROVED | REJECTED | CANCELLED | REVOKED
+  status             String    @default("PENDING")
+  /// Equals userId while the request is open (PENDING, UNDER_REVIEW,
+  /// NEEDS_MORE_INFORMATION) and NULL otherwise, so the unique index allows
+  /// exactly one open request per user without a partial index.
+  activeKey          String?   @unique
+  fullName           String
+  collegeId          String?
+  institutionName    String
+  university         String?
+  department         String
+  designation        String
+  subjectsTaught     String
+  institutionalEmail String?
+  employeeId         String?
+  /// Applicant-supplied context (and answers to information requests).
+  verificationNotes  String?
+  /// What the reviewer asked for when status is NEEDS_MORE_INFORMATION.
+  infoRequested      String?
+  /// Internal only. Never rendered to the applicant.
+  adminNotes         String?
+  reviewedById       String?
+  reviewedAt         DateTime?
+  rejectionReason    String?
+  revokedAt          DateTime?
+  revokeReason       String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user      User                          @relation("teacherApplicant", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer  User?                         @relation("teacherReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  college   College?                      @relation(fields: [collegeId], references: [id], onDelete: SetNull)
+  documents TeacherVerificationDocument[]
+  events    TeacherVerificationEvent[]
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+/// Proof of affiliation. The bytes live in private object storage under a
+/// non-guessable key; only metadata is kept here.
+model TeacherVerificationDocument {
+  id                    String    @id @default(cuid())
+  verificationRequestId String
+  uploadedById          String
+  storageKey            String    @unique
+  originalFilename      String
+  detectedMimeType      String
+  fileSize              Int
+  checksum              String
+  /// CLEAN (files are scanned before they are stored; anything else is rejected).
+  scanStatus            String    @default("CLEAN")
+  scanEngine            String?
+  uploadedAt            DateTime  @default(now())
+  reviewedAt            DateTime?
+  /// RETAINED | SCHEDULED_FOR_DELETION | DELETED
+  retentionStatus       String    @default("RETAINED")
+  deleteAfter           DateTime?
+  deletedAt             DateTime?
+
+  request TeacherVerificationRequest @relation(fields: [verificationRequestId], references: [id], onDelete: Cascade)
+
+  @@index([verificationRequestId])
+  @@index([retentionStatus, deleteAfter])
+}
+
+/// Review history. `internal` rows (admin notes) are never shown to the applicant.
+model TeacherVerificationEvent {
+  id         String   @id @default(cuid())
+  requestId  String
+  actorId    String?
+  type       String // submitted | status_changed | note | info_provided | document_added | document_deleted
+  fromStatus String?
+  toStatus   String?
+  note       String?
+  internal   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  request TeacherVerificationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId, createdAt])
+}
+
+/**
+ * ------------------------------------------------------------------------
+ */
+/**
+ * Support tickets
+ */
+/**
+ * ------------------------------------------------------------------------
+ */
+
+/// Per-year counter behind ticket numbers (PV-2026-000001).
+model TicketCounter {
+  year  Int @id
+  value Int @default(0)
+}
+
+model SupportTicket {
+  id               String    @id @default(cuid())
+  number           String    @unique
+  requesterId      String
+  /// See TICKET_CATEGORIES.
+  category         String
+  subject          String
+  /// OPEN | IN_REVIEW | WAITING_FOR_USER | WAITING_FOR_ADMIN | RESOLVED | CLOSED
+  status           String    @default("OPEN")
+  /// LOW | NORMAL | HIGH | URGENT
+  priority         String    @default("NORMAL")
+  assigneeId       String?
+  /// Optional pointers to what the ticket is about.
+  relatedPaperId   String?
+  relatedCommentId String?
+  relatedUserId    String?
+  lastActivityAt   DateTime  @default(now())
+  resolvedAt       DateTime?
+  closedAt         DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  requester      User               @relation("ticketRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  assignee       User?              @relation("ticketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  messages       TicketMessage[]
+  attachments    TicketAttachment[]
+  assignments    TicketAssignment[]
+  events         TicketEvent[]
+  collegeRequest CollegeRequest?
+  subjectRequest SubjectRequest?
+
+  @@index([requesterId, lastActivityAt])
+  @@index([status, priority, lastActivityAt])
+  @@index([category])
+}
+
+model TicketMessage {
+  id          String   @id @default(cuid())
+  ticketId    String
+  authorId    String?
+  body        String
+  /// Staff-only note. Never returned to the requester.
+  internal    Boolean  @default(false)
+  /// Idempotency key from the form so a double submit cannot post twice.
+  clientToken String?
+  createdAt   DateTime @default(now())
+
+  ticket      SupportTicket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author      User?              @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  attachments TicketAttachment[]
+
+  @@unique([ticketId, clientToken])
+  @@index([ticketId, createdAt])
+}
+
+model TicketAttachment {
+  id           String   @id @default(cuid())
+  ticketId     String
+  messageId    String?
+  uploadedById String?
+  storageKey   String   @unique
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  sha256       String
+  createdAt    DateTime @default(now())
+
+  ticket  SupportTicket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  message TicketMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId])
+}
+
+model TicketAssignment {
+  id           String   @id @default(cuid())
+  ticketId     String
+  assigneeId   String?
+  assignedById String?
+  createdAt    DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+}
+
+model TicketEvent {
+  id        String   @id @default(cuid())
+  ticketId  String
+  actorId   String?
+  type      String // created | status | priority | assigned | message | request_decision
+  fromValue String?
+  toValue   String?
+  createdAt DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+}
+
+/// "Add a new college" request. Always backed by a support ticket.
+model CollegeRequest {
+  id               String    @id @default(cuid())
+  ticketId         String    @unique
+  requestedById    String
+  name             String
+  university       String
+  city             String
+  state            String
+  website          String?
+  details          String?
+  /// REQUESTED | APPROVED | REJECTED | NEEDS_INFORMATION
+  status           String    @default("REQUESTED")
+  decisionNote     String?
+  reviewedById     String?
+  reviewedAt       DateTime?
+  createdCollegeId String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  ticket  SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  college College?      @relation("collegeFromRequest", fields: [createdCollegeId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+}
+
+/// "Add a missing subject" request, scoped to one college's curriculum.
+model SubjectRequest {
+  id               String    @id @default(cuid())
+  ticketId         String    @unique
+  requestedById    String
+  collegeId        String
+  programId        String?
+  branchId         String?
+  semesterId       String?
+  subjectName      String
+  subjectCode      String?
+  details          String?
+  /// REQUESTED | APPROVED | REJECTED | NEEDS_INFORMATION
+  status           String    @default("REQUESTED")
+  decisionNote     String?
+  reviewedById     String?
+  reviewedAt       DateTime?
+  createdSubjectId String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  college  College       @relation("subjectRequestCollege", fields: [collegeId], references: [id], onDelete: Cascade)
+  semester Semester?     @relation(fields: [semesterId], references: [id], onDelete: SetNull)
+  subject  Subject?      @relation(fields: [createdSubjectId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([collegeId])
+}
+
+/// A report about a member's behaviour (rather than one paper or comment).
+/// Reviewed by platform admins; never auto-actioned.
+model UserReport {
+  id             String    @id @default(cuid())
+  reportedUserId String
+  reportedById   String
+  reason         String // see USER_REPORT_REASONS
+  details        String?
+  status         String    @default("OPEN") // OPEN | RESOLVED | DISMISSED
+  resolution     String?
+  reviewedById   String?
+  reviewedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  reportedUser User @relation("userReportTarget", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  reportedBy   User @relation("userReportReporter", fields: [reportedById], references: [id], onDelete: Cascade)
+
+  @@index([reportedUserId, status])
+  @@index([status, createdAt])
+}

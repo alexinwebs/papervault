@@ -1,0 +1,110 @@
+# Single-server production stack: Caddy (automatic HTTPS) -> PaperVault,
+# with Postgres, Redis and ClamAV on a private network.
+#
+#   cp .env.production.example .env.production   # fill it in
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#
+# Uploads are stored in S3-compatible storage when STORAGE_DRIVER=s3, otherwise
+# on the `uploads` volume (back it up).
+name: papervault
+
+x-app-env: &app-env
+  env_file: .env.production
+  environment:
+    DATABASE_URL: postgresql://papervault:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/papervault?schema=public
+    REDIS_URL: redis://redis:6379
+    MALWARE_SCANNER: clamav
+    CLAMAV_HOST: clamav
+    CLAMAV_PORT: "3310"
+    STORAGE_LOCAL_DIR: /app/storage
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: papervault
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: papervault
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U papervault"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 20
+
+  clamav:
+    image: clamav/clamav-debian:stable  # multi-arch: amd64 + arm64
+    restart: unless-stopped
+    volumes: [clamdb:/var/lib/clamav]
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      start_period: 300s
+      retries: 10
+
+  migrate:
+    build: { context: ., target: migrate }
+    <<: *app-env
+    environment:
+      DATABASE_URL: postgresql://papervault:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/papervault?schema=public
+      NODE_ENV: production
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+      args: { APP_VERSION: "${APP_VERSION:-dev}" }
+    restart: unless-stopped
+    <<: *app-env
+    volumes: [uploads:/app/storage]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      clamav: { condition: service_healthy }
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?set SITE_DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [app]
+
+  # Nightly maintenance: recycle-bin purge, expired tokens, email retry.
+  cron:
+    image: curlimages/curl:latest
+    restart: unless-stopped
+    env_file: .env.production
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          sleep 86400
+          curl -fsS -X POST http://app:3000/api/cron/purge -H "Authorization: Bearer $$CRON_SECRET" || true
+        done
+    depends_on: [app]
+
+volumes:
+  pgdata:
+  clamdb:
+  uploads:
+  caddy_data:
+  caddy_config:

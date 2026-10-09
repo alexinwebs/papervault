@@ -1,0 +1,74 @@
+{
+  "name": "papervault",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "HOSTNAME=${BIND_HOST:-0.0.0.0} STORAGE_LOCAL_DIR=${STORAGE_LOCAL_DIR:-$PWD/storage} node --env-file-if-exists=.env .next/standalone/server.js",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "setup": "prisma generate && prisma migrate deploy && prisma db seed",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "admin:create": "tsx prisma/create-admin.ts",
+    "test:unit": "vitest run",
+    "verify": "npm run typecheck && npm run lint && npm run test:unit",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:catalogue": "SEED_MODE=catalogue tsx prisma/seed.ts",
+    "postbuild": "node -e \"const fs=require('fs');fs.cpSync('public','.next/standalone/public',{recursive:true});fs.cpSync('.next/static','.next/standalone/.next/static',{recursive:true});fs.rmSync('.next/standalone/.env',{force:true})\"",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "db:purge-demo": "tsx prisma/purge-demo.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1146.0",
+    "@aws-sdk/s3-request-presigner": "^3.1146.0",
+    "@prisma/client": "^6.2.1",
+    "@sentry/node": "^11.4.0",
+    "@types/nodemailer": "^8.0.2",
+    "bcryptjs": "^2.4.3",
+    "ioredis": "^6.0.0",
+    "jose": "^5.9.6",
+    "lucide-react": "^0.469.0",
+    "next": "^15.5.27",
+    "nodemailer": "^10.0.10",
+    "otplib": "^13.5.0",
+    "pdf-lib": "^1.17.1",
+    "qrcode": "^1.5.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "unpdf": "^1.8.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.10.5",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.0.4",
+    "@types/react-dom": "^19.0.2",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^15.5.25",
+    "postcss": "^8.4.49",
+    "prisma": "^6.2.1",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^5.0.2"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "$postcss"
+    },
+    "deepmerge-ts": "^8.0.2"
+  }
+}

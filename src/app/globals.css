@@ -1,0 +1,136 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --shadow-ink: #00002a;
+}
+
+@layer base {
+  html {
+    background: #fff8e8;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply min-h-[100svh] bg-cream text-ink font-sans antialiased;
+  }
+  * {
+    @apply border-ink;
+  }
+  ::selection {
+    background: #ffd447;
+  }
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 3px solid #1a3f5f;
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Editorial panel: 2px ink border + hard offset shadow, minimal rounding. */
+  .pv-panel {
+    @apply border-2 border-ink bg-cream shadow-hard-sm rounded-sm;
+  }
+  .pv-panel-flat {
+    @apply border-2 border-ink bg-cream rounded-sm;
+  }
+  .pv-card {
+    @apply border-2 border-ink bg-cream shadow-hard-sm rounded-sm transition-transform duration-150;
+  }
+  .pv-card-interactive {
+    @apply pv-card hover:-translate-y-[2px] hover:shadow-hard focus-visible:-translate-y-[2px];
+  }
+  .pv-btn {
+    @apply inline-flex items-center justify-center gap-2 border-2 border-ink rounded-sm px-4 py-2
+      font-mono text-xs uppercase tracking-[0.08em] transition-all duration-150 select-none;
+  }
+  .pv-btn-primary {
+    @apply pv-btn bg-navy text-cream shadow-hard-sm hover:-translate-y-[1px] hover:shadow-hard
+      active:translate-y-0 active:shadow-hard-sm disabled:opacity-50;
+  }
+  .pv-btn-secondary {
+    @apply pv-btn bg-cream text-ink shadow-hard-sm hover:-translate-y-[1px] hover:shadow-hard
+      active:translate-y-0 disabled:opacity-50;
+  }
+  .pv-btn-ghost {
+    @apply pv-btn border-transparent bg-transparent hover:border-ink hover:bg-cream;
+  }
+  .pv-input {
+    @apply w-full border-2 border-ink rounded-sm bg-paper px-3 py-2 font-sans text-sm
+      placeholder:text-ink/40;
+  }
+  .pv-label {
+    @apply block font-mono text-[11px] uppercase tracking-[0.12em] text-ink/70 mb-1;
+  }
+  .pv-chip {
+    @apply inline-flex items-center gap-1 border-2 border-ink rounded-sm px-2 py-[3px]
+      font-mono text-[11px] uppercase tracking-[0.08em];
+  }
+  .pv-h1 {
+    @apply font-mono font-bold tracking-tight text-4xl leading-[1.05] sm:text-5xl;
+  }
+  .pv-h2 {
+    @apply font-mono font-bold tracking-tight text-xl sm:text-2xl;
+  }
+  .pv-section-title {
+    @apply font-mono font-bold text-lg sm:text-xl tracking-tight;
+  }
+  .pv-eyebrow {
+    @apply font-mono text-[11px] uppercase tracking-[0.18em] text-ink/60;
+  }
+  .pv-divider {
+    @apply border-t-2 border-ink/20;
+  }
+  .pv-row {
+    @apply flex items-center gap-3 border-2 border-ink rounded-sm bg-paper px-3 py-2;
+  }
+  /* Inline text links. The min-height keeps standalone links at or above the
+     24px WCAG 2.5.8 target size without changing the type scale. */
+  .pv-link {
+    @apply inline-flex min-h-[24px] items-center underline decoration-2 underline-offset-2 hover:decoration-[3px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink;
+  }
+  /* Same target guarantee for links that act as a row or card title. */
+  /* 20px box plus the label's own padding keeps the hit area at 24px+. */
+  .pv-checkbox {
+    /* 24px square so the box itself is a valid touch target, not only the
+       label row it usually sits in. */
+    @apply h-6 w-6 shrink-0 border-2 border-ink rounded-sm accent-ink;
+  }
+  .pv-checkbox-row {
+    @apply flex min-h-[24px] items-center gap-2 py-0.5;
+  }
+  .pv-link-title {
+    @apply inline-flex min-h-[24px] items-center no-underline hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink;
+  }
+}
+
+@layer components {
+  /* Tables become stacked cards below md so nothing overflows on phones. */
+  .pv-table-wrap {
+    /* `relative` matters: absolutely positioned children such as `.sr-only`
+       labels would otherwise be laid out against the page and widen it. */
+    @apply relative -mx-1 overflow-x-auto px-1;
+  }
+  .pv-table {
+    @apply w-full min-w-[620px] border-collapse border-2 border-ink bg-paper text-left text-sm;
+  }
+  .pv-table th {
+    @apply border-b-2 border-ink bg-cream px-3 py-2 font-mono text-[11px] uppercase tracking-[0.1em];
+  }
+  .pv-table td {
+    @apply border-b border-ink/15 px-3 py-2 align-middle;
+  }
+}

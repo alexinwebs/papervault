@@ -1,0 +1,9 @@
+{
+  // Prose here wraps at 100 columns, which keeps tables and command lines readable.
+  "config": {
+    "MD013": { "line_length": 100, "tables": false, "code_blocks": false },
+    "MD033": false
+  },
+  "globs": ["**/*.md"],
+  "ignores": ["node_modules/**", ".next/**"]
+}

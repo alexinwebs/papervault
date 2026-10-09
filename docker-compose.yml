@@ -1,0 +1,18 @@
+# Local development services. `docker compose up -d`, then `npm run setup && npm run dev`.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: papervault
+      POSTGRES_DB: papervault
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  clamav:
+    image: clamav/clamav:stable
+    ports: ["3310:3310"]
+    profiles: [scan]   # docker compose --profile scan up -d
+volumes:
+  pgdata:

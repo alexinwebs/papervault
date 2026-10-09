@@ -1,0 +1,33 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { requireUser } from "@/lib/auth";
+import { markAllRead, markRead } from "../services/inbox";
+import { run, type ActionState } from "./types";
+
+export async function markInboxReadAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return run(async () => {
+    const user = await requireUser();
+    const id = String(formData.get("id") ?? "");
+    if (id) await markRead(user, id);
+    revalidatePath("/inbox");
+    revalidatePath("/", "layout");
+    return { ok: true, message: "Marked as read." };
+  });
+}
+
+export async function markAllInboxReadAction(
+  _prev: ActionState,
+  _formData: FormData,
+): Promise<ActionState> {
+  return run(async () => {
+    const user = await requireUser();
+    const count = await markAllRead(user);
+    revalidatePath("/inbox");
+    revalidatePath("/", "layout");
+    return { ok: true, message: count ? `Marked ${count} as read.` : "Nothing unread." };
+  });
+}

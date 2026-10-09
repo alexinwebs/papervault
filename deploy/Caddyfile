@@ -1,0 +1,13 @@
+{$SITE_DOMAIN} {
+	encode zstd gzip
+	# Uploads are capped in the app (MAX_UPLOAD_BYTES); this is a backstop.
+	request_body {
+		max_size 30MB
+	}
+	reverse_proxy app:3000 {
+		header_up X-Forwarded-Proto {scheme}
+		# Caddy drops client-supplied X-Forwarded-For (no trusted_proxies set) and
+		# appends the real peer, which is what TRUSTED_PROXY_HOPS=1 relies on.
+		header_up X-Real-IP {remote_host}
+	}
+}
