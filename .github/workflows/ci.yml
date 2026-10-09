@@ -44,6 +44,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test:unit
+      # The integration tests expect the college/curriculum catalogue (no demo
+      # accounts), exactly what a fresh production database gets.
+      - run: npm run db:catalogue
       # Concurrency regression for the duplicate guard (needs the Postgres service).
       - run: npm run test:integration
 
@@ -52,7 +55,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # The suite signs in and registers far more often than people do.
-      LOGIN_ATTEMPTS_PER_MINUTE: "120"
+      LOGIN_ATTEMPTS_PER_MINUTE: "1000"
+      # `npm start` is production mode, which otherwise forces admins through 2FA.
+      REQUIRE_ADMIN_2FA: "false"
       REGISTRATIONS_PER_IP_PER_HOUR: "1000"
     services:
       postgres:
