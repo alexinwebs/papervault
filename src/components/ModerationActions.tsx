@@ -18,11 +18,11 @@ export function ModerationPanel({
   duplicates: { id: string; title: string; status: string }[];
   classification?: string;
 }) {
-  const [state, action] = useActionState(moderateAction, idle);
+  const [state, action, statePending] = useActionState(moderateAction, idle);
 
   return (
     <form action={action} className="flex flex-col gap-3">
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <input type="hidden" name="paperId" value={paperId} />
 
       <div>
@@ -107,10 +107,10 @@ export function ModerationPanel({
 }
 
 export function ResolveReportForm({ reportId }: { reportId: string }) {
-  const [state, action] = useActionState(resolveReportAction, idle);
+  const [state, action, statePending] = useActionState(resolveReportAction, idle);
   return (
     <form action={action} className="flex flex-wrap items-end gap-2">
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <input type="hidden" name="reportId" value={reportId} />
       <input
         name="resolution"
@@ -130,10 +130,10 @@ export function ResolveReportForm({ reportId }: { reportId: string }) {
 }
 
 export function ResolveTakedownForm({ id, status = "OPEN" }: { id: string; status?: string }) {
-  const [state, action] = useActionState(resolveTakedownAction, idle);
+  const [state, action, statePending] = useActionState(resolveTakedownAction, idle);
   return (
     <form action={action} className="flex flex-wrap items-end gap-2">
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <input type="hidden" name="id" value={id} />
       <input
         name="resolution"

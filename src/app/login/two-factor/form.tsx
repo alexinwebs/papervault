@@ -6,11 +6,11 @@ import { idle } from "@/server/actions/types";
 import { FormBanner, SubmitButton } from "@/components/Form";
 
 export function TwoFactorChallengeForm() {
-  const [state, action] = useActionState(verifyTwoFactorAction, idle);
+  const [state, action, statePending] = useActionState(verifyTwoFactorAction, idle);
   return (
     <>
       <form action={action} className="flex flex-col gap-3">
-        <FormBanner state={state} />
+        <FormBanner pending={statePending} state={state} />
         <div>
           <label className="pv-label" htmlFor="token">
             Verification code

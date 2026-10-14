@@ -48,6 +48,12 @@ jobs:
       # accounts), exactly what a fresh production database gets.
       - run: npm run db:catalogue
       # Concurrency regression for the duplicate guard (needs the Postgres service).
+      - name: Install local PDF and OCR tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils tesseract-ocr tesseract-ocr-eng tesseract-ocr-osd
+          pdftoppm -v
+          tesseract --list-langs
       - run: npm run test:integration
 
   e2e:
@@ -78,6 +84,12 @@ jobs:
       - run: npx prisma generate
       - run: npx prisma migrate deploy
       - run: npx prisma db seed
+      - name: Install local PDF and OCR tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils tesseract-ocr tesseract-ocr-eng tesseract-ocr-osd
+          pdftoppm -v
+          tesseract --list-langs
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npm run test:e2e

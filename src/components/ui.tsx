@@ -47,8 +47,8 @@ export function SectionHeader({
   icon?: ReactNode;
 }) {
   return (
-    <div className="mb-3 flex items-end justify-between gap-4">
-      <h2 className="pv-section-title flex items-center gap-2">
+    <div className="mb-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+      <h2 className="pv-section-title min-w-0 flex items-center gap-2">
         {icon}
         {title}
       </h2>

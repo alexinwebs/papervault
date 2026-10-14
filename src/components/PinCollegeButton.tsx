@@ -1,5 +1,6 @@
 "use client";
 
+import { useNotifySuccess } from "./SuccessPopup";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pin, PinOff } from "lucide-react";
@@ -32,6 +33,7 @@ export function PinCollegeButton({
   className?: string;
 }) {
   const router = useRouter();
+  const showSuccess = useNotifySuccess();
   const [optimistic, setOptimistic] = useState(pinned);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +61,7 @@ export function PinCollegeButton({
         setError(result.message ?? "Could not update the pin.");
         return;
       }
+      showSuccess(want ? `${collegeName} pinned to My Colleges.` : `${collegeName} unpinned.`);
       const nav = (result.data as { nav?: unknown } | undefined)?.nav;
       if (Array.isArray(nav)) window.dispatchEvent(new CustomEvent(PINS_CHANGED_EVENT, { detail: nav }));
     } catch {

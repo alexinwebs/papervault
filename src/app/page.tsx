@@ -21,10 +21,10 @@ export default async function HomePage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-6">
       {/* Hero */}
       <Panel className="bg-blue-light px-4 py-6 sm:px-8 sm:py-8">
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <div>
             {/* The official wordmark already carries the tagline, so the
                 previous eyebrow line would just repeat it. */}
@@ -80,14 +80,14 @@ export default async function HomePage() {
         </div>
       </Panel>
 
-      <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
-        <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <div className="flex min-w-0 flex-col gap-6">
           <section>
             <SectionHeader title="Popular colleges" href="/colleges" />
             {colleges.length === 0 ? (
               <EmptyState title="Nothing here yet." body="Colleges appear as soon as the archive has data." />
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
                 {colleges.map((college) => (
                   <CollegeCard key={college.id} college={college} papers={college.papers} compact />
                 ))}
@@ -113,7 +113,7 @@ export default async function HomePage() {
           </section>
         </div>
 
-        <div className="flex flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-6">
           <Panel className="bg-yellow px-4 py-4">
             <h2 className="pv-section-title flex items-center gap-2">
               <BarChart3 className="h-4 w-4" aria-hidden /> Platform stats

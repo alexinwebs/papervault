@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { updateRoleAction } from "@/server/actions/moderation";
 import { idle } from "@/server/actions/types";
+import { FormBanner } from "@/components/Form";
 import { ROLES } from "@/lib/constants";
 
 export function RoleForm({
@@ -16,7 +17,7 @@ export function RoleForm({
   collegeId: string;
   colleges: { id: string; name: string }[];
 }) {
-  const [state, action] = useActionState(updateRoleAction, idle);
+  const [state, action, statePending] = useActionState(updateRoleAction, idle);
 
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">
@@ -50,7 +51,7 @@ export function RoleForm({
       <button type="submit" className="pv-btn-secondary px-2 py-1">
         Save
       </button>
-      {state.message ? <span className="font-sans text-[11px]">{state.message}</span> : null}
+      <FormBanner pending={statePending} state={state} />
     </form>
   );
 }

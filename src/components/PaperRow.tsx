@@ -1,16 +1,11 @@
 import Link from "next/link";
 import { FileText } from "lucide-react";
+import { ExamTypeChip } from "./ExamTypeChip";
 import { Chip } from "./ui";
 import { VerificationBadge } from "./VerificationBadge";
 import { paperContext } from "@/lib/links";
 import { formatDate } from "@/lib/utils";
 
-const EXAM_ACCENT: Record<string, "pink" | "blue" | "mint" | "lavender" | "yellow"> = {
-  ST: "pink",
-  CT: "lavender",
-  MID_SEM: "blue",
-  END_SEM: "mint",
-};
 
 type Paper = Parameters<typeof paperContext>[0] & {
   id: string;
@@ -25,12 +20,12 @@ type Paper = Parameters<typeof paperContext>[0] & {
 export function PaperRow({ paper, showCollege = true }: { paper: Paper; showCollege?: boolean }) {
   const ctx = paperContext(paper);
   return (
-    <li className="pv-row flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-      <span className="hidden border-2 border-ink rounded-sm bg-cream p-2 sm:block" aria-hidden>
+    <li className="pv-row paper-row gap-3">
+      <span className="paper-row-icon border-2 border-ink rounded-sm bg-cream p-2" aria-hidden>
         <FileText className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate font-mono text-sm font-bold">{paper.title}</p>
+        <p className="paper-row-title truncate font-mono text-sm font-bold">{paper.title}</p>
         <p className="mt-[2px] text-[11px] text-ink/70">
           {showCollege ? `${ctx.college.shortName} · ` : ""}
           {ctx.program.name} {ctx.branch.code} · Semester {ctx.semesterNumber}
@@ -38,12 +33,12 @@ export function PaperRow({ paper, showCollege = true }: { paper: Paper; showColl
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Chip accent={EXAM_ACCENT[ctx.examType.code] ?? "cream"}>{ctx.examType.code.replace("_", "-")}</Chip>
+        <ExamTypeChip code={ctx.examType.code} />
         <Chip>{ctx.academicYear}</Chip>
         <VerificationBadge verification={paper.verification} restricted={paper.restricted} />
       </div>
       <div className="flex items-center gap-3">
-        <span className="hidden font-sans text-[11px] text-ink/50 lg:block">
+        <span className="paper-row-date font-sans text-[11px] text-ink/50">
           {formatDate(paper.publishedAt ?? paper.createdAt)}
         </span>
         <Link href={`/papers/${paper.id}`} prefetch={false} className="pv-btn-secondary">
@@ -62,7 +57,7 @@ export function PaperList({
   showCollege?: boolean;
 }) {
   return (
-    <ul className="flex flex-col gap-2">
+    <ul className="paper-list flex flex-col gap-2">
       {papers.map((paper) => (
         <PaperRow key={paper.id} paper={paper} showCollege={showCollege} />
       ))}

@@ -1,3 +1,4 @@
+import { SuccessPopup } from "@/components/SuccessPopup";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
@@ -60,9 +61,7 @@ export default async function AdminBranchPage({
       />
 
       {done ? (
-        <p role="status" className="pv-panel-flat bg-mint px-3 py-2 font-mono text-xs">
-          {done}
-        </p>
+        <SuccessPopup message={`${done}`} />
       ) : null}
 
       <section className="grid gap-4 lg:grid-cols-2">

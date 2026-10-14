@@ -98,8 +98,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           ) : null}
           {user ? (
             <div className="flex shrink-0 items-center gap-2">
-              <Link href={`/contributors/${user.id}`} className="hidden text-right md:block">
-                <span className="block font-mono text-sm font-bold leading-tight">{user.name}</span>
+              <Link href={`/contributors/${user.id}`} className="hidden max-w-[12rem] text-right md:block">
+                <span className="block font-mono text-sm font-bold leading-tight truncate" title={user.name}>{user.name}</span>
                 <span className="block font-sans text-[11px] capitalize text-ink/60">
                   {user.role.replace(/_/g, " ").toLowerCase()}
                 </span>
@@ -123,9 +123,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           )}
         </header>
 
-        <main className="min-w-0 flex-1 px-3 py-4 sm:px-5 sm:py-6">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 sm:py-6 xl:px-8"><div className="mx-auto w-full min-w-0 max-w-[1600px]">{children}</div></main>
 
-        <footer className="flex flex-col gap-3 border-t-2 border-ink px-3 py-3 font-mono text-[11px] text-ink/70 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <footer className="flex flex-col gap-3 border-t-2 border-ink px-3 py-3 font-mono text-[11px] text-ink/70 xl:flex-row xl:items-center xl:justify-between sm:px-6">
           <span className="flex items-center gap-2">
             <LogoMark size={22} />
             <span>© {new Date().getFullYear()} PaperVault | Open knowledge. Stronger students.</span>

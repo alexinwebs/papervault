@@ -1,5 +1,6 @@
 "use client";
 
+import { SuccessPopup } from "@/components/SuccessPopup";
 import { useActionState, useState } from "react";
 import { Bookmark, BookmarkCheck, Flag } from "lucide-react";
 import { reportPaperAction, toggleBookmarkAction, requestPaperAction } from "@/server/actions/papers";
@@ -9,10 +10,11 @@ import { REPORT_REASONS, REPORT_REASON_LABEL, USER_REPORT_REASONS, USER_REPORT_R
 import { FormBanner, SubmitButton } from "./Form";
 
 export function BookmarkButton({ paperId, saved }: { paperId: string; saved: boolean }) {
-  const [state, action] = useActionState(toggleBookmarkAction, idle);
+  const [state, action, statePending] = useActionState(toggleBookmarkAction, idle);
   const isSaved = state.ok ? state.message?.startsWith("Saved") : saved;
   return (
     <form action={action}>
+      <FormBanner pending={statePending} state={state} />
       <input type="hidden" name="paperId" value={paperId} />
       <SubmitButton variant="secondary" pendingLabel="Saving…">
         {isSaved ? (
@@ -31,7 +33,7 @@ export function BookmarkButton({ paperId, saved }: { paperId: string; saved: boo
 
 export function ReportDialog({ paperId }: { paperId: string }) {
   const [open, setOpen] = useState(false);
-  const [state, action] = useActionState(reportPaperAction, idle);
+  const [state, action, statePending] = useActionState(reportPaperAction, idle);
 
   return (
     <div className="relative">
@@ -45,7 +47,7 @@ export function ReportDialog({ paperId }: { paperId: string }) {
           className="absolute right-0 z-20 mt-2 w-[min(92vw,360px)] border-2 border-ink rounded-sm bg-cream p-4 shadow-hard"
         >
           <form action={action} className="flex flex-col gap-3">
-            <FormBanner state={state} />
+            <FormBanner pending={statePending} state={state} />
             <input type="hidden" name="paperId" value={paperId} />
             <div>
               <label className="pv-label" htmlFor={`reason-${paperId}`}>
@@ -89,7 +91,7 @@ export function RequestPaperButton({
   academicYear: number;
   signedIn: boolean;
 }) {
-  const [state, action] = useActionState(requestPaperAction, idle);
+  const [state, action, statePending] = useActionState(requestPaperAction, idle);
   if (!signedIn) {
     return (
       <a href="/login?next=/colleges" className="pv-btn-primary">
@@ -102,7 +104,7 @@ export function RequestPaperButton({
       <input type="hidden" name="subjectId" value={subjectId} />
       <input type="hidden" name="examTypeId" value={examTypeId} />
       <input type="hidden" name="academicYear" value={academicYear} />
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <SubmitButton pendingLabel="Recording…">Request this paper</SubmitButton>
     </form>
   );
@@ -110,7 +112,7 @@ export function RequestPaperButton({
 
 export function ReportUserDialog({ userId, name }: { userId: string; name: string }) {
   const [open, setOpen] = useState(false);
-  const [state, action] = useActionState(reportUserAction, idle);
+  const [state, action, statePending] = useActionState(reportUserAction, idle);
   return (
     <div className="relative">
       <button type="button" className="pv-btn-secondary px-3 py-1.5 text-xs" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
@@ -123,10 +125,10 @@ export function ReportUserDialog({ userId, name }: { userId: string; name: strin
           className="absolute left-0 z-20 mt-2 w-[min(92vw,360px)] border-2 border-ink rounded-sm bg-cream p-4 shadow-hard"
         >
           {state.ok ? (
-            <p role="status" className="font-mono text-xs">{state.message}</p>
+            <SuccessPopup message={state.message} />
           ) : (
             <form action={action} className="flex flex-col gap-3">
-              <FormBanner state={state} />
+              <FormBanner pending={statePending} state={state} />
               <input type="hidden" name="userId" value={userId} />
               <div>
                 <label className="pv-label" htmlFor={`ur-reason-${userId}`}>

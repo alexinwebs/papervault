@@ -9,7 +9,7 @@ import { PaperList } from "@/components/PaperRow";
 import { Chip, EmptyState, PageHeading, Panel, SectionHeader } from "@/components/ui";
 import { searchEverything } from "@/server/services/search";
 import { searchSchema } from "@/server/validators";
-import { subjectHref } from "@/lib/links";
+import { subjectHref, uploadHref } from "@/lib/links";
 
 export const metadata: Metadata = { title: "Search", robots: { index: false } };
 
@@ -23,6 +23,12 @@ export default async function SearchPage({
   const { q, page } = parsed.success ? parsed.data : { q: "", page: 1 };
   const [results, user] = await Promise.all([searchEverything(q, page), getSessionUser()]);
   const pinned = await pinnedCollegeIds(user?.id, results.colleges.map((c) => c.id));
+  // One clear subject match: "I have this paper" opens the upload form filled in.
+  const queryYear = results.tokens.map(Number).find((n) => n >= 1990 && n <= 2100);
+  const haveHref =
+    results.subjects.length === 1
+      ? uploadHref({ subjectId: results.subjects[0].id, year: queryYear })
+      : "/upload";
 
   return (
     <div className="flex flex-col gap-5">
@@ -118,7 +124,7 @@ export default async function SearchPage({
                 title="Not in the archive yet."
                 body="Open the subject page to request this paper, or upload the copy you have."
                 action={
-                  <Link href="/upload" className="pv-btn-primary">
+                  <Link href={haveHref} className="pv-btn-primary">
                     I have this paper
                   </Link>
                 }

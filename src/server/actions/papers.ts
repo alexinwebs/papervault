@@ -3,38 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { assertVerifiedEmail, requireUser } from "@/lib/auth";
 import { rateLimitAsync } from "@/lib/rate-limit";
-import { imagesToPdf } from "@/lib/pdf";
-import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 import { uploadMetadataSchema, reportSchema, bookmarkSchema, paperRequestSchema } from "../validators";
+import { uploadFileFromForm } from "../services/upload-input";
+import { catalogueDraftSchema } from "../services/automatic-catalogue";
+import { validation } from "@/lib/errors";
 import { submitPaper } from "../services/uploads";
 import { toggleBookmark } from "../services/library";
 import { fileReport } from "../services/reports";
 import { requestPaper } from "../services/requests";
 import { run, zodErrors, type ActionState } from "./types";
-
-const DATA_URL = /^data:image\/(jpeg|jpg|png);base64,([A-Za-z0-9+/=]+)$/;
-
-/** Decodes the browser's captured page images, rejecting anything unexpected. */
-function parseCapturedPages(raw: string): Array<{ bytes: Buffer; mimeType: string }> | null {
-  let list: unknown;
-  try {
-    list = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  if (!Array.isArray(list)) return null;
-  const pages: Array<{ bytes: Buffer; mimeType: string }> = [];
-  for (const entry of list.slice(0, 30)) {
-    if (typeof entry !== "string") return null;
-    const match = DATA_URL.exec(entry);
-    if (!match) return null;
-    pages.push({
-      bytes: Buffer.from(match[2], "base64"),
-      mimeType: match[1] === "png" ? "image/png" : "image/jpeg",
-    });
-  }
-  return pages;
-}
 
 export async function uploadPaperAction(
   _prev: ActionState,
@@ -45,57 +22,38 @@ export async function uploadPaperAction(
     assertVerifiedEmail(user);
     await rateLimitAsync(`upload:${user.id}`, 20, 60 * 60_000);
 
+    const file = await uploadFileFromForm(formData, user.name);
     const entries = Object.fromEntries(formData) as Record<string, unknown>;
+    let autoCatalogue;
+    if (entries.autoCatalogue) {
+      if (entries.catalogueConfirmed !== "yes") throw validation("Confirm the detected group before submitting.");
+      let raw: unknown;
+      try { raw = JSON.parse(String(entries.autoCatalogue)); } catch { throw validation("The automatic group could not be read."); }
+      const draft = catalogueDraftSchema.safeParse(raw);
+      if (!draft.success) throw validation("Complete the college, programme, branch, semester, subject name/code and exam type before submitting.");
+      autoCatalogue = draft.data;
+      await rateLimitAsync(`auto-group:${user.id}`, 10, 60 * 60_000);
+      // IDs are resolved atomically, never accepted from an unvalidated draft.
+      for (const key of ["collegeId", "programId", "branchId", "semesterId", "subjectId", "examTypeId"]) entries[key] = "AUTO";
+    }
     const parsed = uploadMetadataSchema.safeParse(entries);
     if (!parsed.success) return { ok: false, fieldErrors: zodErrors(parsed.error) };
-    const alsoSubjectIds = formData
-      .getAll("alsoSubjectIds")
-      .map((value) => String(value))
-      .filter(Boolean);
-
-    let bytes: Buffer;
-    let name: string;
-    let type: string;
-
-    if (String(formData.get("captureMode") ?? "file") === "camera") {
-      // Photos taken in the browser arrive as data URLs and become one PDF.
-      const captured = parseCapturedPages(String(formData.get("capturedPages") ?? "[]"));
-      if (captured === null) {
-        return { ok: false, fieldErrors: { file: "Those captured pages could not be read." } };
-      }
-      if (captured.length === 0) {
-        return { ok: false, fieldErrors: { file: "Capture at least one page with the camera." } };
-      }
-      bytes = await imagesToPdf(captured, { title: "Captured paper", author: user.name });
-      if (bytes.byteLength > MAX_UPLOAD_BYTES) {
-        return {
-          ok: false,
-          fieldErrors: { file: "The captured pages are too large. Remove a page and try again." },
-        };
-      }
-      name = "camera-capture.pdf";
-      type = "application/pdf";
-    } else {
-      const file = formData.get("file");
-      if (!(file instanceof File) || file.size === 0) {
-        return { ok: false, fieldErrors: { file: "Attach the paper file." } };
-      }
-      bytes = Buffer.from(await file.arrayBuffer());
-      name = file.name;
-      type = file.type;
-    }
+    const alsoSubjectIds = autoCatalogue ? [] : formData.getAll("alsoSubjectIds").map(String).filter(Boolean);
 
     const result = await submitPaper({
       user,
       metadata: {
         ...parsed.data,
+        autoCatalogue,
         sessionLabel: parsed.data.sessionLabel || undefined,
         notes: parsed.data.notes || undefined,
         alsoSubjectIds,
       },
-      file: { name, type, bytes },
+      file,
     });
 
+    revalidatePath("/colleges");
+    revalidatePath("/subjects");
     revalidatePath("/library");
     revalidatePath("/moderation");
     return {

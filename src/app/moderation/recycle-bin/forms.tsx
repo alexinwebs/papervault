@@ -10,10 +10,10 @@ import { idle } from "@/server/actions/types";
 import { FormBanner, SubmitButton } from "@/components/Form";
 
 export function RestoreForm({ paperId }: { paperId: string }) {
-  const [state, action] = useActionState(restorePaperAction, idle);
+  const [state, action, statePending] = useActionState(restorePaperAction, idle);
   return (
     <form action={action} className="inline-flex items-center gap-2">
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <input type="hidden" name="paperId" value={paperId} />
       <SubmitButton className="px-3 py-1 text-xs" pendingLabel="Restoring…">
         Restore
@@ -23,7 +23,7 @@ export function RestoreForm({ paperId }: { paperId: string }) {
 }
 
 export function PurgeForm({ paperId }: { paperId: string }) {
-  const [state, action] = useActionState(purgePaperAction, idle);
+  const [state, action, statePending] = useActionState(purgePaperAction, idle);
   return (
     <form
       action={action}
@@ -34,7 +34,7 @@ export function PurgeForm({ paperId }: { paperId: string }) {
       }}
       className="inline-flex items-center gap-2"
     >
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <input type="hidden" name="paperId" value={paperId} />
       <SubmitButton variant="secondary" className="px-3 py-1 text-xs" pendingLabel="Deleting…">
         Delete for good
@@ -44,7 +44,7 @@ export function PurgeForm({ paperId }: { paperId: string }) {
 }
 
 export function SoftDeleteForm({ paperId }: { paperId: string }) {
-  const [state, action] = useActionState(softDeletePaperAction, idle);
+  const [state, action, statePending] = useActionState(softDeletePaperAction, idle);
   return (
     <form
       action={action}
@@ -53,7 +53,7 @@ export function SoftDeleteForm({ paperId }: { paperId: string }) {
       }}
       className="flex flex-wrap items-end gap-2"
     >
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <input type="hidden" name="paperId" value={paperId} />
       <div className="grow">
         <label className="pv-label" htmlFor={`delete-reason-${paperId}`}>

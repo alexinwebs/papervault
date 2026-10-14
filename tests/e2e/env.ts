@@ -3,8 +3,8 @@ import { parseEnv } from "node:util";
 
 /**
  * The server reads .env with `node --env-file`, where a later duplicate line
- * wins. parseEnv uses the same parser, so this sees what the server sees
- * (unless the server was started before .env was last edited).
+ * wins. parseEnv uses the same parser. CI supplies these values directly
+ * through process.env without a .env file; exported values take precedence.
  */
 export function localEnv(): Record<string, string | undefined> {
   const file = existsSync(".env") ? parseEnv(readFileSync(".env", "utf8")) : {};
@@ -12,6 +12,6 @@ export function localEnv(): Record<string, string | undefined> {
 }
 
 function pick(env: NodeJS.ProcessEnv) {
-  const keys = ["REQUIRE_ADMIN_2FA", "CRON_SECRET", "LOGIN_ATTEMPTS_PER_MINUTE", "REGISTRATIONS_PER_IP_PER_HOUR"];
+  const keys = ["DATABASE_URL", "REQUIRE_ADMIN_2FA", "CRON_SECRET", "LOGIN_ATTEMPTS_PER_MINUTE", "REGISTRATIONS_PER_IP_PER_HOUR"];
   return Object.fromEntries(keys.filter((k) => env[k] !== undefined).map((k) => [k, env[k]]));
 }

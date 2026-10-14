@@ -1,3 +1,4 @@
+import { SuccessPopup } from "@/components/SuccessPopup";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -68,9 +69,7 @@ export default async function ReviewPage({
     <div className="flex flex-col gap-5">
       <BackBar fallback="/moderation" />
       {decided ? (
-        <p role="status" className="pv-panel-flat bg-mint px-3 py-2 font-mono text-xs">
-          Paper is now {decided.replace(/_/g, " ").toLowerCase()}.
-        </p>
+        <SuccessPopup message={`Paper is now ${decided.replace(/_/g, " ").toLowerCase()}.`} />
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>

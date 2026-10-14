@@ -48,7 +48,7 @@ export default async function LibraryPage() {
             }
           />
         ) : (
-          <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3" data-testid="my-colleges">
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3" data-testid="my-colleges">
             {pins.map(({ college }) => (
               <li key={college.id}>
                 <Panel className="flex items-center justify-between gap-3 px-3 py-2">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useActionPopup } from "./SuccessPopup";
 import { useFormStatus } from "react-dom";
 import type { ActionState } from "@/server/actions/types";
 import { cx } from "@/lib/utils";
@@ -11,6 +12,7 @@ export function SubmitButton({
   pendingLabel = "Working…",
   testId,
   disabled = false,
+  pendingOverride = false,
 }: {
   children: React.ReactNode;
   variant?: "primary" | "secondary";
@@ -20,8 +22,10 @@ export function SubmitButton({
   testId?: string;
   /** Blocks an action that is never valid, e.g. banning your own account. */
   disabled?: boolean;
+  pendingOverride?: boolean;
 }) {
-  const { pending } = useFormStatus();
+  const { pending: formPending } = useFormStatus();
+  const pending = formPending || pendingOverride;
   return (
     <button
       type="submit"
@@ -35,19 +39,9 @@ export function SubmitButton({
   );
 }
 
-export function FormBanner({ state }: { state: ActionState }) {
-  if (!state.message) return null;
-  return (
-    <p
-      role="status"
-      className={cx(
-        "pv-panel-flat px-3 py-2 font-mono text-xs",
-        state.ok ? "bg-mint" : "bg-pink",
-      )}
-    >
-      {state.message}
-    </p>
-  );
+export function FormBanner({ state, pending = false, loadingMessage = "Working…" }: { state: ActionState; pending?: boolean; loadingMessage?: string }) {
+  useActionPopup(state, pending, loadingMessage);
+  return null;
 }
 
 export function FieldError({ error }: { error?: string }) {

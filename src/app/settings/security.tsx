@@ -1,5 +1,6 @@
 "use client";
 
+import { PasswordInput } from "@/components/PasswordInput";
 import { useActionState, useState } from "react";
 import { Download, Laptop, ShieldCheck, Trash2 } from "lucide-react";
 import {
@@ -13,18 +14,17 @@ import { idle, type ActionState } from "@/server/actions/types";
 import { FieldError, FormBanner, SubmitButton } from "@/components/Form";
 
 export function ChangePasswordForm() {
-  const [state, action] = useActionState(changePasswordAction, idle);
+  const [state, action, statePending] = useActionState(changePasswordAction, idle);
   return (
     <form action={action} className="flex flex-col gap-3">
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <div>
         <label className="pv-label" htmlFor="currentPassword">
           Current password
         </label>
-        <input
+        <PasswordInput
           id="currentPassword"
           name="currentPassword"
-          type="password"
           autoComplete="current-password"
           required
           className="pv-input"
@@ -36,10 +36,9 @@ export function ChangePasswordForm() {
           <label className="pv-label" htmlFor="new-password">
             New password
           </label>
-          <input
+          <PasswordInput
             id="new-password"
             name="password"
-            type="password"
             autoComplete="new-password"
             required
             className="pv-input"
@@ -50,10 +49,9 @@ export function ChangePasswordForm() {
           <label className="pv-label" htmlFor="confirm-password">
             Confirm new password
           </label>
-          <input
+          <PasswordInput
             id="confirm-password"
             name="confirmPassword"
-            type="password"
             autoComplete="new-password"
             required
             className="pv-input"
@@ -76,7 +74,7 @@ export function NotificationPrefsForm({
 }: {
   defaults: { notifyOnDecision: boolean; notifyOnReply: boolean; notifyDigest: boolean };
 }) {
-  const [state, action] = useActionState(updateNotificationPrefsAction, idle);
+  const [state, action, statePending] = useActionState(updateNotificationPrefsAction, idle);
   const rows: Array<[keyof typeof defaults, string, string]> = [
     ["notifyOnDecision", "Decisions on my uploads", "Approved, published, rejected or restricted."],
     ["notifyOnReply", "Replies to my comments", "Someone answers a doubt I posted."],
@@ -84,7 +82,7 @@ export function NotificationPrefsForm({
   ];
   return (
     <form action={action} className="flex flex-col gap-3">
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       {rows.map(([name, label, hint]) => (
         <label key={name} htmlFor={name} className="flex items-start gap-3">
           <input
@@ -121,8 +119,8 @@ export function SessionList({
   }>;
   currentSessionId: string;
 }) {
-  const [state, action] = useActionState(revokeSessionAction, idle);
-  const [allState, allAction] = useActionState(
+  const [state, action, statePending] = useActionState(revokeSessionAction, idle);
+  const [allState, allAction, allStatePending] = useActionState(
     async (_prev: ActionState) => revokeAllSessionsAction(),
     idle,
   );
@@ -139,7 +137,7 @@ export function SessionList({
 
   return (
     <div className="flex flex-col gap-3">
-      <FormBanner state={state.message ? state : allState} />
+      <FormBanner pending={statePending || allStatePending} state={state.message ? state : allState} />
       <ul className="flex flex-col gap-2">
         {sessions.map((session) => (
           <li key={session.id} className="pv-row justify-between gap-2">
@@ -183,7 +181,7 @@ export function SessionList({
  * account without being shown the export link first.
  */
 export function DataAndErasurePanel({ isLastAdmin }: { isLastAdmin: boolean }) {
-  const [state, action] = useActionState(eraseAccountAction, idle);
+  const [state, action, statePending] = useActionState(eraseAccountAction, idle);
   const [armed, setArmed] = useState(false);
 
   return (
@@ -221,15 +219,14 @@ export function DataAndErasurePanel({ isLastAdmin }: { isLastAdmin: boolean }) {
           </p>
         ) : armed ? (
           <form action={action} className="mt-3 flex flex-col gap-3">
-            <FormBanner state={state} />
+            <FormBanner pending={statePending} state={state} />
             <div>
               <label className="pv-label" htmlFor="erase-password">
                 Your password
               </label>
-              <input
+              <PasswordInput
                 id="erase-password"
                 name="currentPassword"
-                type="password"
                 autoComplete="current-password"
                 required
                 className="pv-input"

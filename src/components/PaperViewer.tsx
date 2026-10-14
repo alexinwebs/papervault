@@ -33,7 +33,7 @@ export function PaperViewer({
   return (
     <div className="pv-panel-flat overflow-hidden bg-paper">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-ink bg-cream px-3 py-2">
-        <span className="truncate font-mono text-[11px] uppercase tracking-[0.1em]">{fileName}</span>
+        <span className="min-w-0 max-w-full truncate font-mono text-[11px] uppercase tracking-[0.1em]">{fileName}</span>
         <div className="flex items-center gap-1">
           <button
             type="button"

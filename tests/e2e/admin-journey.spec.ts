@@ -1,3 +1,4 @@
+import { dismissActionPopup } from "./popups";
 import { expect, test, type Page } from "@playwright/test";
 import { makePdf } from "./fixtures";
 
@@ -46,6 +47,8 @@ test("an admin can add a college and then delete it", async ({ page }) => {
     await expect(page).toHaveURL(/\/admin\/colleges\?added=/, { timeout: 15_000 });
   }).toPass({ timeout: 60_000 });
   await expect(page.getByText(new RegExp(`E2E${stamp % 1000} added`, "i"))).toBeVisible();
+
+  await dismissActionPopup(page);
 
   // The new college is listed, and its default exam types were created.
   const row = page.getByRole("link", { name });
@@ -97,6 +100,7 @@ test("an upload records an approval-request email for the admins", async ({ page
   await page.locator("#examTypeId").selectOption({ index: 1 });
   await page.locator("#academicYear").selectOption({ index: 3 });
   await page.locator("#examClassification").selectOption("PAST");
+  await page.getByTestId("more-details").locator("summary").click();
   await page.locator("#sessionLabel").fill(marker);
   await page.locator("#file").setInputFiles({
     name: "outbox.pdf",
@@ -106,6 +110,7 @@ test("an upload records an approval-request email for the admins", async ({ page
   await page.getByRole("button", { name: /submit paper/i }).click();
   // Ingest hashes, sanitises and scans the PDF, so allow a generous window.
   await expect(page.getByText(/Paper secured/i)).toBeVisible({ timeout: 90_000 });
+  await dismissActionPopup(page);
   await page.getByRole("button", { name: /sign out/i }).click();
   await expect(page.getByRole("link", { name: /^sign in$/i })).toBeVisible();
 

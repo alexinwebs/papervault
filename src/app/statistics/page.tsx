@@ -48,7 +48,7 @@ export default async function StatisticsPage() {
         description="Every number here is computed from the database, not hardcoded."
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatsCard value={formatCount(stats.colleges)} label="Colleges" />
         <StatsCard value={formatCount(published)} label="Published papers" />
         <StatsCard value={formatCount(stats.students)} label="Registered students" />
@@ -64,7 +64,7 @@ export default async function StatisticsPage() {
                 <Link
                   href={collegeHref(college.slug)}
                   prefetch={false}
-                  className="pv-link w-64 shrink-0 font-mono text-sm"
+                  className="pv-link w-64 max-w-full min-w-0 shrink-0 font-mono text-sm"
                 >
                   <span className="truncate">{college.name}</span>
                 </Link>
@@ -83,7 +83,7 @@ export default async function StatisticsPage() {
             <ul className="flex flex-col gap-2">
               {coverage.map((row) => (
                 <li key={row.branch.id} className="flex flex-wrap items-center gap-3">
-                  <span className="w-56 shrink-0 font-mono text-sm">
+                  <span className="w-56 max-w-full shrink-0 font-mono text-sm">
                     {row.branch.program.name} {row.branch.code}
                   </span>
                   <CoverageBar percent={row.percent} />
@@ -95,7 +95,7 @@ export default async function StatisticsPage() {
         </section>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section>
           <SectionHeader title="Exam sessions by year" />
           <Panel className="px-4 py-4">
@@ -118,11 +118,11 @@ export default async function StatisticsPage() {
           <Panel className="px-4 py-4">
             <ul className="flex flex-col gap-2 font-mono text-xs">
               {byExamType.map((t) => (
-                <li key={`${t.college.shortName}-${t.code}`} className="flex justify-between">
-                  <span>
+                <li key={`${t.college.shortName}-${t.code}`} className="flex min-w-0 justify-between gap-2">
+                  <span className="min-w-0 break-words">
                     {t.college.shortName} · {t.name}
                   </span>
-                  <span>{t._count.sessions} sessions</span>
+                  <span className="shrink-0">{t._count.sessions} sessions</span>
                 </li>
               ))}
             </ul>

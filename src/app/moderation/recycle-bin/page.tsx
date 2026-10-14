@@ -1,3 +1,4 @@
+import { SuccessPopup } from "@/components/SuccessPopup";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { BackBar, EmptyState, PageHeading, Panel } from "@/components/ui";
@@ -44,9 +45,7 @@ export default async function RecycleBinPage({
       />
 
       {done && FLASH[done] ? (
-        <p role="status" className="pv-panel-flat bg-mint px-3 py-2 font-mono text-xs">
-          {FLASH[done]}
-        </p>
+        <SuccessPopup message={`${FLASH[done]}`} />
       ) : null}
 
       {papers.length === 0 ? (

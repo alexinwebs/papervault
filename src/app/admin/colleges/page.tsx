@@ -1,3 +1,4 @@
+import { SuccessPopup } from "@/components/SuccessPopup";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -33,9 +34,7 @@ export default async function AdminCollegesPage({
       />
 
       {flash ? (
-        <p role="status" className="pv-panel-flat bg-mint px-3 py-2 font-mono text-xs">
-          {flash}
-        </p>
+        <SuccessPopup message={`${flash}`} />
       ) : null}
 
       <section>

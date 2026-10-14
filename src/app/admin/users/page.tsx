@@ -53,6 +53,7 @@ export default async function AdminUsersPage({
               {
                 name: "password",
                 label: "Temporary password",
+                type: "password",
                 required: true,
                 hint: "At least 10 characters with a letter and a number. Ask them to change it.",
               },

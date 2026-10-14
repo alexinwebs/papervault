@@ -1,3 +1,4 @@
+import { dismissActionPopup } from "./popups";
 import { expect, test, type Page } from "@playwright/test";
 
 const PASSWORD = "papervault123";
@@ -44,6 +45,8 @@ test("a student can post a comment and another can reply to it", async ({ page }
     await expect(page.getByText(marker)).toBeVisible({ timeout: 10_000 });
   }).toPass({ timeout: 60_000 });
 
+  await dismissActionPopup(page);
+
   // A different account replies in the thread.
   await page.getByRole("button", { name: /sign out/i }).click();
   await expect(page.getByRole("link", { name: /^sign in$/i })).toBeVisible();
@@ -76,6 +79,7 @@ test("an author can delete their own comment", async ({ page }) => {
     await expect(page.getByText(marker)).toBeVisible({ timeout: 10_000 });
   }).toPass({ timeout: 60_000 });
 
+  await dismissActionPopup(page);
   page.on("dialog", (dialog) => dialog.accept());
   // Retry only the click: once the delete lands the button disappears, so a
   // combined click+assert retry would fail on its second pass.

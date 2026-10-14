@@ -20,7 +20,7 @@ export function GlobalSearch({
   const [value, setValue] = useState(params.get("q") ?? "");
 
   return (
-    <form role="search" action="/search" method="get" className="flex-1">
+    <form role="search" action="/search" method="get" className="min-w-0 flex-1">
       <label htmlFor={id} className="sr-only">
         Search colleges, branches, subjects or papers
       </label>
@@ -32,7 +32,7 @@ export function GlobalSearch({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="Search college, branch, subject, or paper..."
-          className={`w-full bg-transparent font-sans outline-none placeholder:text-ink/40 ${
+          className={`min-w-0 w-full bg-transparent font-sans outline-none placeholder:text-ink/40 ${
             compact ? "py-2 text-sm" : "py-3 text-sm"
           }`}
           autoComplete="off"

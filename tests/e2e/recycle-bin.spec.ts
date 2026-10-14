@@ -1,3 +1,4 @@
+import { dismissActionPopup } from "./popups";
 import { expect, test, type Page } from "@playwright/test";
 
 async function signIn(page: Page, email: string) {
@@ -29,6 +30,7 @@ test("a moderator can bin a paper and restore it", async ({ page }) => {
     await expect(page).toHaveURL(/recycle-bin\?done=deleted/, { timeout: 15_000 });
   }).toPass({ timeout: 60_000 });
 
+  await dismissActionPopup(page);
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
 
   // It is gone from the public archive while it sits in the bin.

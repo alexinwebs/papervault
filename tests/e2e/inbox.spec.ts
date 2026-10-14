@@ -23,15 +23,11 @@ test("the bell shows an unread count and the inbox can clear it", async ({ page 
   await expect(page.getByRole("heading", { name: /^Notifications$/ })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2 }).first()).toBeVisible();
 
-  await expect(async () => {
-    const button = page.getByRole("button", { name: /mark all as read/i });
-    if (await button.count()) await button.click({ timeout: 5_000 });
-    await expect(button).toHaveCount(0, { timeout: 10_000 });
-  }).toPass({ timeout: 60_000 });
-  // The button only shows "Working…" while the action runs; wait for it to finish
-  // before reloading, or the reload can race the write.
-  await expect(page.getByRole("button", { name: /working/i })).toHaveCount(0, { timeout: 20_000 });
   await page.waitForLoadState("networkidle");
+  await page.getByRole("button", { name: /mark all as read/i }).click();
+  // Wait for the persisted outcome, not the disappearing pending button label.
+  await expect(page.getByRole("link", { name: /Notifications, \d+ unread/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /mark all as read|marking/i })).toHaveCount(0);
 
   await page.reload();
   await expect(page.getByRole("link", { name: /Notifications, \d+ unread/i })).toHaveCount(0);

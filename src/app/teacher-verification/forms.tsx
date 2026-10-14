@@ -1,5 +1,6 @@
 "use client";
 
+import { SuccessPopup } from "@/components/SuccessPopup";
 import { useActionState } from "react";
 import {
   cancelTeacherVerificationAction,
@@ -23,18 +24,16 @@ export function TeacherApplicationForm({
   maxFiles: number;
   maxBytes: number;
 }) {
-  const [state, action] = useActionState(submitTeacherVerificationAction, idle);
+  const [state, action, statePending] = useActionState(submitTeacherVerificationAction, idle);
   if (state.ok) {
     return (
-      <p role="status" className="pv-panel-flat bg-mint px-4 py-3 font-mono text-xs" data-testid="teacher-submitted">
-        {state.message}
-      </p>
+      <SuccessPopup message={state.message} testId="teacher-submitted" />
     );
   }
   const err = state.fieldErrors ?? {};
   return (
     <form action={action} className="flex flex-col gap-4" data-testid="teacher-application">
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="pv-label" htmlFor="fullName">Full name</label>
@@ -116,13 +115,13 @@ export function TeacherApplicationForm({
 }
 
 export function MoreInformationForm({ requestId, maxFiles, maxBytes }: { requestId: string; maxFiles: number; maxBytes: number }) {
-  const [state, action] = useActionState(provideTeacherInfoAction, idle);
+  const [state, action, statePending] = useActionState(provideTeacherInfoAction, idle);
   if (state.ok) {
-    return <p role="status" className="pv-panel-flat bg-mint px-4 py-3 font-mono text-xs">{state.message}</p>;
+    return <SuccessPopup message={state.message} />;
   }
   return (
     <form action={action} className="flex flex-col gap-3" data-testid="teacher-more-info">
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <input type="hidden" name="requestId" value={requestId} />
       <div>
         <label className="pv-label" htmlFor="notes">Your reply</label>
@@ -136,7 +135,7 @@ export function MoreInformationForm({ requestId, maxFiles, maxBytes }: { request
 }
 
 export function WithdrawForm({ requestId }: { requestId: string }) {
-  const [state, action] = useActionState(cancelTeacherVerificationAction, idle);
+  const [state, action, statePending] = useActionState(cancelTeacherVerificationAction, idle);
   return (
     <form
       action={action}
@@ -145,7 +144,7 @@ export function WithdrawForm({ requestId }: { requestId: string }) {
       }}
       className="flex flex-col gap-2"
     >
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <input type="hidden" name="requestId" value={requestId} />
       <SubmitButton variant="secondary" className="self-start px-3 py-2 text-xs" pendingLabel="Withdrawing…">
         Withdraw request

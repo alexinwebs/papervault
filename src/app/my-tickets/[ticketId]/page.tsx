@@ -1,3 +1,4 @@
+import { SuccessPopup } from "@/components/SuccessPopup";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { BackBar, Chip, PageHeading, Panel } from "@/components/ui";
@@ -46,9 +47,7 @@ export default async function TicketPage({
         aside={<Chip>{TICKET_STATUS_LABEL[status] ?? status}</Chip>}
       />
       {created ? (
-        <p role="status" className="pv-panel-flat bg-mint px-4 py-3 font-mono text-xs" data-testid="ticket-created">
-          Ticket {ticket.number} created. We&apos;ll notify you when the team replies.
-        </p>
+        <SuccessPopup message={`Ticket ${ticket.number} created. We'll notify you when the team replies.`} testId="ticket-created" />
       ) : null}
       {request ? (
         <Panel className="px-4 py-3">

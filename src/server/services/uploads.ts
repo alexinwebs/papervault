@@ -1,3 +1,6 @@
+import { readPaperText } from "./paper-text";
+import { resolveAutomaticCatalogue, type AutomaticCatalogue } from "./automatic-catalogue";
+import { textKey } from "@/lib/paper-detection";
 import { prisma, prismaRaw } from "@/lib/db";
 import { ALLOWED_MIME, MAX_UPLOAD_BYTES, type ExamClassification } from "@/lib/constants";
 import { validation } from "@/lib/errors";
@@ -15,7 +18,7 @@ import { recordAudit } from "./audit";
 import { notifyApprovalRequested } from "./notifications";
 import type { SessionUser } from "@/lib/auth";
 import { logger } from "@/lib/logger";
-import { extractPdfText, pdfPageCount, sanitizePdf } from "@/lib/pdf";
+import { pdfPageCount, sanitizePdf } from "@/lib/pdf";
 import { assertClean, scanUpload } from "@/lib/scanner";
 import { resolveListingSubjects } from "./listings";
 
@@ -38,6 +41,7 @@ export function extensionFor(mime: string) {
 }
 
 export type UploadMetadata = {
+  autoCatalogue?: AutomaticCatalogue;
   collegeId: string;
   programId: string;
   branchId: string;
@@ -70,13 +74,13 @@ export async function submitPaper(input: {
       "Papers from an exam that is still running or hasn't happened yet can't be uploaded. Please upload it after the exam is over.",
     );
   }
-  const chain = await assertAcademicChain(input.metadata);
-  if (!chain) throw validation("That subject does not belong to the selected college structure.");
-  const alsoSubjectIds = await resolveListingSubjects({
-    collegeId: chain.college.id,
-    primarySubjectId: chain.subject.id,
+  const existingChain = input.metadata.autoCatalogue ? null : await assertAcademicChain(input.metadata);
+  if (!existingChain && !input.metadata.autoCatalogue) throw validation("That subject does not belong to the selected college structure.");
+  const alsoSubjectIds = existingChain ? await resolveListingSubjects({
+    collegeId: existingChain.college.id,
+    primarySubjectId: existingChain.subject.id,
     subjectIds: input.metadata.alsoSubjectIds ?? [],
-  });
+  }) : [];
 
   const { bytes: original } = input.file;
   if (original.byteLength === 0) throw validation("The uploaded file is empty.");
@@ -102,41 +106,30 @@ export async function submitPaper(input: {
     bytes = cleaned.bytes;
     pageCount = await pdfPageCount(bytes);
     // Best-effort: photographed papers have no text layer at all.
-    extractedText = await extractPdfText(bytes);
+
   }
 
+  const reading = await readPaperText(bytes, detected, "submit");
+  extractedText = reading.text || null;
   const digest = sha256(bytes);
   const sessionLabel = input.metadata.sessionLabel?.trim() || null;
   const setLabel = input.metadata.setLabel?.trim() || "Set A";
-
-  const sessionWhere = {
-    subjectId: chain.subject.id,
-    examTypeId: chain.examType.id,
-    academicYear: input.metadata.academicYear,
-    sessionLabel,
-  };
-  const contentHash = contentFingerprint(extractedText);
-  const title = `${chain.subject.name}`;
-
-  // Check-then-insert is only safe if two uploads of the same file, the same
-  // pages or the same exam slot cannot interleave. Transaction-scoped advisory
-  // locks on each of those keys serialise exactly the colliding uploads (and
-  // nothing else), and also stop a NULL session label producing two sessions,
-  // which the unique index alone cannot prevent in Postgres.
+  const contentHash = reading.complete ? contentFingerprint(extractedText) : null;
   const lockKeys = [
     `upload:sha:${digest}`,
     contentHash ? `upload:content:${contentHash}` : null,
-    `upload:slot:${sessionWhere.subjectId}:${sessionWhere.examTypeId}:${sessionWhere.academicYear}:${sessionLabel ?? ""}`,
-  ]
-    .filter((key): key is string => Boolean(key))
-    .sort(); // a fixed order means two uploads can never deadlock each other
+    input.metadata.autoCatalogue ? `catalogue:${textKey(input.metadata.autoCatalogue.collegeName)}` : null,
+  ].filter((key): key is string => Boolean(key)).sort();
 
-  const { paper, key } = await prismaRaw.$transaction(
+  const { paper, key, chain } = await prismaRaw.$transaction(
     async (tx) => {
       for (const lockKey of lockKeys) {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
       }
 
+      const chain = existingChain ?? await resolveAutomaticCatalogue(tx, input.metadata.autoCatalogue!, input.user.id);
+      const sessionWhere = { subjectId: chain.subject.id, examTypeId: chain.examType.id, academicYear: input.metadata.academicYear, sessionLabel };
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`upload:slot:${sessionWhere.subjectId}:${sessionWhere.examTypeId}:${sessionWhere.academicYear}:${sessionLabel ?? ""}`}))`;
       const examSession =
         (await tx.examSession.findFirst({ where: sessionWhere })) ??
         (await tx.examSession.create({ data: sessionWhere }));
@@ -159,7 +152,7 @@ export async function submitPaper(input: {
       const created = await tx.paper.create({
         data: {
           paperSetId: paperSet.id,
-          title,
+          title: chain.subject.name,
           status: "DRAFT",
           uploadedById: input.user.id,
           reviewNote: input.metadata.notes?.trim() || null,
@@ -195,7 +188,7 @@ export async function submitPaper(input: {
           skipDuplicates: true,
         });
       }
-      return { paper: created, key: storageKey };
+      return { paper: created, key: storageKey, chain };
     },
     { maxWait: 10_000, timeout: 20_000 },
   );
@@ -244,7 +237,7 @@ export async function submitPaper(input: {
   try {
     await notifyApprovalRequested({
       paperId: paper.id,
-      title,
+      title: chain.subject.name,
       collegeId: chain.college.id,
       collegeName: chain.college.name,
       context: `${chain.subject.code} · ${chain.subject.semester.branch.program.name} ${chain.subject.semester.branch.code} · Semester ${chain.subject.semester.number} · ${chain.examType.name} ${input.metadata.academicYear}`,

@@ -1,3 +1,4 @@
+import { dismissActionPopup } from "./popups";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
 const PASSWORD = "papervault123";
@@ -47,6 +48,7 @@ test("a member opens a ticket; the admin's reply reaches them but the internal n
   await admin.page.getByTestId("admin-note").getByRole("button", { name: /add internal note/i }).click();
   await expect(admin.page.locator('[data-internal="1"]').filter({ hasText: "secret-note" })).toBeVisible();
 
+  await dismissActionPopup(admin.page);
   await admin.page.locator("#admin-reply-body").fill(`public-reply ${marker}`);
   await admin.page.getByTestId("admin-reply").getByRole("button", { name: /send reply/i }).click();
   await expect(admin.page.getByTestId("admin-ticket-thread")).toContainText("public-reply");
@@ -173,7 +175,7 @@ test("a member can report another member and the report reaches the admin queue"
     await dialog.locator("select").selectOption("SPAM");
     await dialog.locator("textarea").fill("Posting the same link under every paper.");
     await dialog.getByRole("button", { name: /send report/i }).click();
-    await expect(dialog.getByRole("status")).toBeVisible();
+    await expect(reporter.page.getByTestId("success-popup")).toContainText(/report/i);
     break;
   }
   expect(reported).not.toBe("");

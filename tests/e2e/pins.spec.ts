@@ -1,3 +1,4 @@
+import { dismissActionPopup } from "./popups";
 import { expect, test, type Page } from "@playwright/test";
 
 const PASSWORD = "papervault123";
@@ -65,6 +66,7 @@ test("pinning from the college list keeps filters, URL and card navigation intac
   await expect(page).toHaveURL(/\/colleges\?q=kiet$/);
 
   // Desktop sidebar shows the pinned college; clicking goes to its page.
+  await dismissActionPopup(page);
   await expect(navPins(page)).toContainText("KIET");
   await navPins(page).getByRole("link").first().click();
   await expect(page).toHaveURL(/\/colleges\/kiet-group-of-institutions$/);
@@ -125,6 +127,7 @@ test("the pin control fits on a phone", async ({ browser }) => {
   expect(box && box.x + box.width).toBeLessThanOrEqual(375);
   expect(box && box.height).toBeGreaterThanOrEqual(30);
   // The drawer menu shows My Colleges too.
+  await dismissActionPopup(page);
   await page.getByRole("button", { name: "Open navigation" }).click();
   await expect(page.getByTestId("nav-my-colleges").last()).toBeVisible();
   await ctx.close();

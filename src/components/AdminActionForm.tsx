@@ -45,7 +45,7 @@ export function AdminActionForm({
   testId?: string;
   inline?: boolean;
 }) {
-  const [state, formAction] = useActionState(action, idle);
+  const [state, formAction, statePending] = useActionState(action, idle);
   const [typed, setTyped] = useState("");
   const err = state.fieldErrors ?? {};
   const ready = !typedConfirm || typed.trim() === typedConfirm;
@@ -124,7 +124,7 @@ export function AdminActionForm({
           {submitLabel}
         </SubmitButton>
       </div>
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
     </form>
   );
 }

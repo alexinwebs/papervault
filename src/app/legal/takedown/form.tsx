@@ -1,5 +1,6 @@
 "use client";
 
+import { SuccessPopup } from "@/components/SuccessPopup";
 import { useActionState } from "react";
 import { fileTakedownAction } from "@/server/actions/takedowns";
 import { idle } from "@/server/actions/types";
@@ -12,19 +13,17 @@ const ROLES = [
 ];
 
 export function TakedownForm() {
-  const [state, action] = useActionState(fileTakedownAction, idle);
+  const [state, action, statePending] = useActionState(fileTakedownAction, idle);
 
   if (state.ok) {
     return (
-      <div role="status" className="pv-panel-flat bg-mint px-4 py-3 font-sans text-sm">
-        {state.message}
-      </div>
+      <SuccessPopup message={state.message} />
     );
   }
 
   return (
     <form action={action} className="flex flex-col gap-3">
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <div>
         <label className="pv-label" htmlFor="paperUrl">
           Address of the page

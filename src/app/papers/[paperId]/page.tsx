@@ -1,3 +1,4 @@
+import { ExamTypeChip } from "@/components/ExamTypeChip";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -93,19 +94,20 @@ export default async function PaperPage({ params, searchParams }: Params) {
         ]}
       />
 
-      <div className="grid gap-5 xl:grid-cols-[1.7fr_1fr]">
-        <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        <div className="flex min-w-0 flex-col gap-4">
           <Panel className="px-5 py-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
+              <div className="min-w-0 max-w-full">
                 <p className="pv-eyebrow">{ctx.breadcrumbLabel}</p>
-                <h1 className="pv-h2 mt-2">{paper.title}</h1>
+                <h1 className="pv-h2 mt-2 break-words">{paper.title}</h1>
                 <p className="mt-2 font-mono text-sm">
                   {ctx.examType.name} · {ctx.academicYear}
                   {ctx.sessionLabel ? ` · ${ctx.sessionLabel}` : ""} · {ctx.setLabel}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-2">
+                <ExamTypeChip code={ctx.examType.code} />
                 <VerificationBadge verification={paper.verification} restricted={paper.restricted} />
                 {user && isStaff(user.role) ? <StatusChip status={paper.status} /> : null}
               </div>
@@ -167,7 +169,7 @@ export default async function PaperPage({ params, searchParams }: Params) {
           />
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           <Panel className="px-4 py-4">
             <h2 className="pv-section-title">Details</h2>
             <dl className="mt-3 flex flex-col gap-2 font-sans text-sm">
@@ -186,8 +188,8 @@ export default async function PaperPage({ params, searchParams }: Params) {
                 ...(file ? [["File", `${file.mimeType.split("/")[1]?.toUpperCase()} · ${formatBytes(file.sizeBytes)}`]] : []),
               ].map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-3 border-b border-ink/10 pb-1">
-                  <dt className="pv-eyebrow">{label}</dt>
-                  <dd className="text-right">{value}</dd>
+                  <dt className="pv-eyebrow shrink-0">{label}</dt>
+                  <dd className="min-w-0 break-words text-right">{value}</dd>
                 </div>
               ))}
             </dl>

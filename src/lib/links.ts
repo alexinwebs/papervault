@@ -66,3 +66,14 @@ export function paperContext(paper: PaperContext) {
     breadcrumbLabel: `${college.shortName} · ${program.name} ${branch.code} · Semester ${semester.number}`,
   };
 }
+
+/**
+ * Upload form pre-filled for a subject (and optionally exam type and year).
+ * Everything stays editable; the form only uses these as starting values.
+ */
+export function uploadHref(prefill: { subjectId: string; examType?: string | null; year?: number | null }) {
+  const params = new URLSearchParams({ subject: prefill.subjectId });
+  if (prefill.examType) params.set("examType", prefill.examType);
+  if (prefill.year) params.set("year", String(prefill.year));
+  return `/upload?${params.toString()}`;
+}

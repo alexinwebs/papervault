@@ -1,3 +1,4 @@
+import { dismissActionPopup } from "./popups";
 import { expect, test, type Page } from "@playwright/test";
 
 const PASSWORD = "papervault123";
@@ -134,6 +135,7 @@ test("an admin can create a member, ban them and delete them", async ({ page, br
     await expect(page).toHaveURL(/\/admin\/users\/[a-z0-9]+\?done=/, { timeout: 15_000 });
   }).toPass({ timeout: 45_000 });
 
+  await dismissActionPopup(page);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(`E2E Member ${stamp}`);
   await expect(page.getByText("email unconfirmed")).toBeVisible();
 
@@ -143,6 +145,8 @@ test("an admin can create a member, ban them and delete them", async ({ page, br
     if (await button.count()) await button.click({ timeout: 5_000 });
     await expect(page.getByText("email confirmed")).toBeVisible({ timeout: 10_000 });
   }).toPass({ timeout: 45_000 });
+
+  await dismissActionPopup(page);
 
   // Ban through the standing form (confirm dialog auto-accepted).
   page.on("dialog", (dialog) => dialog.accept());

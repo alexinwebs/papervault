@@ -14,12 +14,15 @@ const MAX_PAGES = 60;
 
 type Props = {
   fileUrl: string;
+  fileData?: Uint8Array;
+  pageNumber?: number;
+  onPageCount?: (count: number) => void;
   zoom: number;
   label: string;
   onStatus: (status: "ready" | "error") => void;
 };
 
-export function PdfPages({ fileUrl, zoom, label, onStatus }: Props) {
+export function PdfPages({ fileUrl, fileData, pageNumber, onPageCount, zoom, label, onStatus }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [pageCount, setPageCount] = useState(0);
@@ -45,7 +48,7 @@ export function PdfPages({ fileUrl, zoom, label, onStatus }: Props) {
         const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
         pdfjs.GlobalWorkerOptions.workerSrc = "/pdfjs/pdf.worker.min.mjs";
         task = pdfjs.getDocument({
-          url: fileUrl,
+          ...(fileData ? { data: new Uint8Array(fileData) } : { url: fileUrl }),
           withCredentials: true,
           isEvalSupported: false,
           standardFontDataUrl: "/pdfjs/standard_fonts/",
@@ -54,6 +57,7 @@ export function PdfPages({ fileUrl, zoom, label, onStatus }: Props) {
         if (cancelled) return;
         docRef.current = doc;
         setPageCount(Math.min(doc.numPages, MAX_PAGES));
+        onPageCount?.(Math.min(doc.numPages, MAX_PAGES));
       } catch {
         if (!cancelled) onStatus("error");
       }
@@ -65,7 +69,7 @@ export function PdfPages({ fileUrl, zoom, label, onStatus }: Props) {
     };
     // onStatus is a stable state setter wrapper; reload only for a new file.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fileUrl]);
+  }, [fileUrl, fileData]);
 
   // (Re)draw pages whenever the size or zoom changes.
   useEffect(() => {
@@ -79,7 +83,7 @@ export function PdfPages({ fileUrl, zoom, label, onStatus }: Props) {
         const ratio = Math.min(window.devicePixelRatio || 1, 3);
         const canvases = el.querySelectorAll<HTMLCanvasElement>("canvas[data-page]");
         for (let i = 0; i < canvases.length && !cancelled; i++) {
-          const page = await doc.getPage(i + 1);
+          const page = await doc.getPage(pageNumber ?? i + 1);
           if (cancelled) return;
           const base = page.getViewport({ scale: 1 });
           const cssWidth = (width * zoom) / 100;
@@ -103,17 +107,17 @@ export function PdfPages({ fileUrl, zoom, label, onStatus }: Props) {
       renders.forEach((t) => t.cancel?.());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [width, zoom, pageCount]);
+  }, [width, zoom, pageCount, pageNumber]);
 
   return (
     <div ref={containerRef} className="w-full" aria-label={label} role="document" data-testid="pdf-pages">
       <div className="flex w-max min-w-full flex-col items-center gap-3">
-        {Array.from({ length: pageCount }, (_, i) => (
+        {Array.from({ length: pageNumber && pageCount ? 1 : pageCount }, (_, i) => (
           <canvas
             key={i}
-            data-page={i + 1}
+            data-page={pageNumber ?? i + 1}
             className="max-w-none border-2 border-ink bg-white"
-            aria-label={`Page ${i + 1}`}
+            aria-label={`Page ${pageNumber ?? i + 1}`}
           />
         ))}
       </div>

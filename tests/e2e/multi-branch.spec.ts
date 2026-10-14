@@ -1,3 +1,4 @@
+import { dismissActionPopup } from "./popups";
 import { expect, test, type Page } from "@playwright/test";
 import { makePdf } from "./fixtures";
 
@@ -11,6 +12,7 @@ async function signIn(page: Page, email: string) {
   await page.locator("#email").fill(email);
   await page.locator("#password").fill(PASSWORD);
   await page.getByRole("button", { name: /^sign in$/i }).click();
+  await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("button", { name: /sign out/i })).toBeVisible();
 }
 
@@ -26,6 +28,7 @@ test("a paper can be listed under several branches", async ({ page }) => {
   const option = page.locator("#subjectId option", { hasText: SUBJECT });
   await page.locator("#subjectId").selectOption(await option.getAttribute("value"));
 
+  await page.getByTestId("more-details").locator("summary").click();
   const also = page.getByTestId("also-branches");
   await expect(also).toBeVisible();
   await also.getByRole("checkbox", { name: /Information Technology/ }).check();
@@ -42,7 +45,9 @@ test("a paper can be listed under several branches", async ({ page }) => {
   const href = await page.getByTestId("uploaded-paper-link").getAttribute("href");
   const paperId = href!.split("/").pop()!;
 
+  await dismissActionPopup(page);
   await page.getByRole("button", { name: /sign out/i }).click();
+  await expect(page.getByRole("link", { name: /^sign in$/i })).toBeVisible();
   await signIn(page, "moderator@papervault.dev");
   await page.goto(`/moderation/${paperId}`);
   await page.waitForLoadState("networkidle");
