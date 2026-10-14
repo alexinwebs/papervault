@@ -10,6 +10,8 @@ import { localEnv } from "./env";
 export default async function globalSetup(config: FullConfig) {
   const env = localEnv();
   const problems: string[] = [];
+  if (!env.DATABASE_URL)
+    problems.push("DATABASE_URL must point to a disposable local or CI test database.");
   if (env.REQUIRE_ADMIN_2FA !== "false")
     problems.push('REQUIRE_ADMIN_2FA=false   (npm start runs in production mode, which forces admins through 2FA)');
   if (!env.CRON_SECRET) problems.push('CRON_SECRET="local-cron-secret"   (any value works; the maintenance test needs one)');
@@ -27,9 +29,9 @@ export default async function globalSetup(config: FullConfig) {
   }
   if (problems.length > 0) {
     throw new Error(
-      "\n\nThe browser tests need these settings in .env (each key once; a later duplicate line overrides an earlier one):\n  " +
+      "\n\nThe browser tests need these settings in process.env or .env (exported values take precedence):\n  " +
         problems.join("\n  ") +
-        "\n\nFix .env, restart the server (Ctrl+C, then npm start), and run the tests again.\n",
+        "\n\nFix the test environment, restart any existing test server, and run the tests again. Never use a production database for this suite.\n",
     );
   }
 
