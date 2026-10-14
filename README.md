@@ -611,6 +611,17 @@ publishing their own installation; do not assume a bundled payment identity belo
 
 ## License
 
-No `LICENSE` file has been added. Unless and until an explicit license is provided, rights remain
-with the relevant copyright holders; a public repository alone is not a general reuse license.
-Ask the maintainer before redistribution or reuse beyond permissions otherwise granted to you.
+PaperVault's original application code and documentation are licensed under the
+[MIT License](LICENSE).
+
+Copyright (c) 2026 Abbas Ansari.
+
+You may use, modify and redistribute the software, including commercially, subject to the
+license terms. Retain the copyright and permission notice when distributing copies or
+substantial portions. The software is provided **without warranty**; see `LICENSE` for the
+complete terms.
+
+Third-party dependencies and bundled assets retain their respective licenses and notices,
+including the font notices in `public/pdfjs/standard_fonts/`. The MIT license does not grant
+rights to third-party question papers, uploaded documents or other content hosted through
+PaperVault; obtain the relevant rights holder's permission where required.
