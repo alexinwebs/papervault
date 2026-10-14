@@ -1,305 +1,627 @@
 # PaperVault
 
-**A student-powered archive of college question papers.** Students upload past papers, moderators
-review them, and everyone can browse, search and download them, organised the way a college
-actually works:
+<p align="center">
+  <img src="public/brand/papervault-wordmark.png"
+       alt="PaperVault — your college, your papers." width="260">
+</p>
+
+**A student-powered archive of college question papers.** Find past papers, contribute your
+own, and help build a useful, moderated academic archive.
+
+[![CI](https://github.com/alexinwebs/papervault/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/alexinwebs/papervault/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/alexinwebs/papervault/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/alexinwebs/papervault/actions/workflows/codeql.yml)
+
+**[Live website](https://papervault.duckdns.org)** ·
+[Report a bug](https://github.com/alexinwebs/papervault/issues) ·
+[In-app support](https://papervault.duckdns.org/support) ·
+[Deployment guide](docs/DEPLOYMENT.md)
 
 ```text
-COLLEGE → PROGRAM → BRANCH → SEMESTER → SUBJECT → EXAM TYPE → YEAR → PAPER
+College → Program → Branch → Semester → Subject → Exam type → Year/session → Paper
 ```
 
-Live: **<https://papervault.duckdns.org>**
+This README covers v14 and its subsequent dependency-security and CI fixes. The source of truth
+for installed dependency versions is `package-lock.json`.
 
----
+## Contents
+
+- [Features](#features)
+- [How paper uploads work](#how-paper-uploads-work)
+- [Free local PDF detection](#free-local-pdf-detection)
+- [Roles and permissions](#roles-and-permissions)
+- [Technology stack](#technology-stack)
+- [Local development](#local-development)
+- [Configuration](#configuration)
+- [Testing and continuous integration](#testing-and-continuous-integration)
+- [Production deployment](#production-deployment)
+- [Updating an existing deployment](#updating-an-existing-deployment)
+- [Backups and monitoring](#backups-and-monitoring)
+- [Troubleshooting](#troubleshooting)
+- [Project structure](#project-structure)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [Security and responsible use](#security-and-responsible-use)
+- [Support](#support)
+- [License](#license)
 
 ## Features
 
-- **Browse and search:** drill down from college to individual papers, run full-text search, and
-  pin your colleges to the sidebar.
-- **Contribute:** upload PDFs or images. Every file is virus-scanned (ClamAV), checked for
-  duplicates and sent to moderation.
-- **Multi-branch papers:** one upload can be listed under the same subject in several branches
-  (e.g. DBMS for CSE, IT, IoT and DS), so shared papers aren't uploaded again.
-- **Moderation:** approve, reject, restrict, or send back for changes. Moderators can be scoped to
-  a college. Current-exam papers are protected.
-- **Discussion:** comments on papers, paper requests, bookmarks and an in-app inbox.
-- **Notifications:** email for signup confirmation, password reset, approval requests and review
-  outcomes.
-- **Administration:** manage colleges, curriculum, papers and members. Includes an audit log, an
-  email outbox, a recycle bin and site-wide settings.
-- **Trust and safety:** reporting, support tickets, account bans, optional teacher verification,
-  and grievance and legal pages.
-- **Security:** bcrypt passwords, 2FA (TOTP, required for admins), rate limiting, CSRF-safe server
-  actions, strict security headers and upload malware scanning.
-- **Support the project:** an optional "Buy me a coffee" page with a UPI QR code.
+### Find and organise papers
 
-## Tech stack
+- Browse by college, program, branch, semester, subject, exam type and academic year.
+- Search the archive, including extracted paper text when available.
+- Distinguish CT, ST, PUT, Mid-Sem and End-Sem papers with labelled, coloured badges.
+- Pin colleges, bookmark papers and return to your library.
+- Read papers in the viewer and download papers you are permitted to access.
+- List a shared paper under matching subjects in multiple branches without uploading it again.
 
-| Layer | Technology |
-| --- | --- |
-| Framework | Next.js 15 (App Router, Server Actions), React 19, TypeScript |
-| Data | PostgreSQL 16 + Prisma 6, Zod validation |
-| Cache / rate limits | Redis 7 |
-| Storage | Local disk or any S3-compatible bucket |
-| Upload scanning | ClamAV |
-| Email | Gmail (App Password), SMTP, Resend or Postmark |
-| Styling | Tailwind CSS, retro-editorial / neo-brutalist design system |
-| Testing | Vitest (unit + integration), Playwright (end-to-end) |
-| Deployment | Docker Compose + Caddy (automatic HTTPS) |
+### Contribute with less typing
 
----
+- Upload a PDF, JPG or PNG, or use the camera-capture flow.
+- Choose **Auto-detect**, **Enter manually**, or **Choose existing groups**.
+- Preview a selected PDF or image before submitting; PDFs support page navigation and zoom.
+- Review and edit detected details. Recognition does not overwrite fields already edited.
+- Search themed college/branch suggestions or type a new entry for manual group creation.
+- Create missing academic groups as part of a valid, confirmed submission.
+- Receive loading, success and error popups; modal dialogs lock background scrolling.
 
-## Run it locally
+### Community, moderation and administration
 
-**Requirements:** Node 22+, npm, Docker.
+- Discuss papers, request missing papers, report problems and contact support.
+- Receive in-app notifications; opening an individual notification marks it as read.
+- Receive account and moderation emails when a mail provider is configured.
+- Review, approve, reject, restrict or return submissions for changes.
+- Manage colleges, curriculum, papers, members, reports, email outbox and recycle bin.
+- Use optional teacher-verification workflows with private supporting documents.
+- Export account data or request account erasure through settings.
+- Use responsive phone, tablet and desktop layouts and password-visibility controls.
 
-```bash
-git clone https://github.com/<your-username>/papervault.git
-cd papervault
-npm install
-cp .env.example .env      # local defaults; add Gmail settings to send real email
-docker compose up -d      # Postgres + Redis (add --profile scan for ClamAV)
-npm run setup             # generate client, migrate, load demo data (wipes the local DB)
-npm run dev               # http://localhost:3000
+## How paper uploads work
+
+1. **Choose a file or capture pages.** The default file limit is 10 MiB, configurable by the
+   operator. Only PDF, JPG and PNG are accepted; file signatures are checked, not just extensions.
+2. **Read or enter details.** Automatic detection is optional. Manual entry and existing-group
+   selection remain available if recognition is unavailable or incomplete.
+3. **Preview and confirm.** Check the college, program, branch, semester, subject name/code,
+   exam type, year and test/session. Keep ST-1 and ST-2 distinguishable.
+4. **Validate and scan.** Production uses ClamAV before accepting an upload. PDFs are parsed and
+   sanitised. Declared current or upcoming exam material is refused.
+5. **Check duplicates.** File hashes, complete extracted-text fingerprints when available, and
+   exam-slot checks protect the archive. Database locks also guard concurrent submissions.
+6. **Create or reuse groups.** Confirmed missing groups are created transactionally during a
+   successful submission, not during detection. Rejected uploads roll back new groups.
+7. **Send for review.** Papers are never automatically published. Current-year or uncertain
+   exam material is held as restricted; ordinary past papers enter the review queue.
+
+New colleges remain **unverified** until staff review them. Conflicting catalogue entries are
+not silently overwritten, and archived entries are not automatically restored.
+
+Only upload past or released material you have permission to share. Do not upload live exam
+papers, answer scripts containing personal information, or other restricted documents.
+
+## Free local PDF detection
+
+PaperVault uses a **local text-and-OCR pipeline**, not a paid vision API:
+
+```text
+File validation and configured malware scan
+  → native PDF text extraction when useful
+  → local rendering/OCR for scanned headers
+  → metadata parsing and catalogue matching
+  → editable details for user confirmation
 ```
 
-Demo accounts (password `papervault123`, **local development only**):
+- **Text PDFs:** `unpdf` extracts useful text from the first pages.
+- **Scans and photos:** Poppler renders PDF pages; Tesseract reads printed text.
+- **Image preparation:** Sharp supports orientation, grayscale, contrast, sharpening and
+  conservative deskew/header comparisons when initial readings are incomplete.
+- **Catalogue matching:** known colleges and subject codes help resolve details and expand
+  unambiguous abbreviations. Catalogue-only suggestions and conflicting readings need review.
+- **Academic sessions:** an unambiguous session such as `2025-26` uses `2025` in the year field
+  while retaining the session label separately.
+- **Non-blocking editing:** detection uses a separate abortable request. Users can keep editing,
+  switch to manual entry, or retry detection without losing their corrections.
+
+The upload page asks for a **clear PDF or a well-lit, straight photo with the header visible**.
+
+### Detection limits and privacy
+
+- No cloud OCR API key or per-document OCR-service charge is required. Server CPU, storage,
+  hosting and any configured email services still have their normal costs.
+- OCR runs on your PaperVault server. Configured storage, email and monitoring services are
+  separate operator-controlled integrations; this is not a claim that the whole app is offline.
+- English printed headers work best. Blurry, cropped, handwritten or unusual layouts may fail.
+- A missing college or branch cannot always be inferred. A university name alone is not a
+  college identity. Shared branch lists require the contributor to choose a primary branch.
+- Similar photos can produce different OCR text. Duplicate protection is layered, not a
+  guarantee that every re-scan of a paper will be recognised.
+- Detection uses bounded rendering, process timeouts, temporary-file cleanup and at most two
+  concurrent OCR jobs per process. Successful reads are cached briefly; failed reads may be
+  cached for 30 seconds. Retries do not bypass rate limits or malware checks.
+- Metadata scan detection starts on page one and consults page two only if needed. Full scan
+  OCR for submission fingerprints is capped at 12 pages; incomplete OCR is not treated as a
+  whole-document fingerprint. The local upload preview supports up to 60 PDF pages.
+- Browser preview displays the selected local file. Preview itself does not upload it;
+  Auto-detect separately sends it to your own server for recognition.
+
+**Always review detected details. Recognition is an assistant, not an accuracy guarantee.**
+
+## Roles and permissions
+
+| Role | Purpose |
+| --- | --- |
+| Student | Browse permitted papers, contribute, bookmark, discuss and contact support |
+| Verified teacher | Teacher status granted through an approved verification workflow |
+| Moderator | Review and manage papers within assigned permissions/college scope |
+| College admin | Manage the assigned college within its permission scope |
+| Platform admin | Manage platform-wide catalogue, users, settings and moderation tools |
+
+Email verification is required for contributions by default. Sensitive routes enforce
+server-side permissions. Administrator 2FA is enabled by default for production; local browser
+checks explicitly use test-only settings instead.
+
+## Technology stack
+
+| Area | Technology |
+| --- | --- |
+| Application | Next.js 15 App Router, React 19, TypeScript, Server Actions |
+| Database | PostgreSQL 16, Prisma 6, Zod validation |
+| Styling | Tailwind CSS, cream/navy neo-brutalist design system, Lucide icons |
+| Recognition | `unpdf`, Poppler, Tesseract, Sharp |
+| PDF handling | PDF.js viewer, `pdf-lib` processing |
+| Rate limiting | Redis when configured; per-process fallback |
+| File storage | Persistent local volume or private S3-compatible storage |
+| Upload malware checks | ClamAV |
+| Authentication | bcrypt password hashes, signed database-backed sessions, TOTP 2FA |
+| Email | Gmail App Password, SMTP, Resend, Postmark or local log driver |
+| Tests | Vitest unit/integration tests, Playwright browser tests |
+| Delivery | Docker Compose, Caddy HTTPS, GitHub Actions and CodeQL |
+| Monitoring | Health endpoint, structured logs, optional Sentry |
+
+## Local development
+
+### Requirements
+
+- **Node.js 22** and npm; CI and the Docker image use Node 22.
+- Docker Engine/Desktop with the **Docker Compose v2** plugin.
+- Git and a disposable development PostgreSQL database.
+- Poppler and Tesseract for local OCR and OCR-backed tests.
+- On Windows, use WSL2 or an equivalent Linux development environment for the shell commands.
+
+### Install the project
+
+```bash
+git clone https://github.com/alexinwebs/papervault.git
+cd papervault
+npm ci
+cp .env.example .env
+docker compose up -d
+```
+
+Review `.env` before continuing. Its database URL must target your **local development database**,
+not a live archive. Docker Compose starts PostgreSQL and Redis; ClamAV is an optional local profile.
+
+```bash
+npm run setup
+npm run dev
+```
+
+Open **http://localhost:3000**.
+
+> **Destructive development command:** `npm run setup` and `npm run db:seed` load demo data and
+> reset database tables. Never run them against production or any database you need to preserve.
+> Demo papers and statistics are generated fixtures, not real contributions or live usage data.
+
+### Install OCR tools outside Docker
+
+For Ubuntu/Debian:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y --no-install-recommends \
+  poppler-utils tesseract-ocr tesseract-ocr-eng tesseract-ocr-osd
+```
+
+For Fedora:
+
+```bash
+sudo dnf install -y poppler-utils tesseract tesseract-langpack-eng
+```
+
+Verify the installation:
+
+```bash
+pdftoppm -v
+tesseract --list-langs
+```
+
+The language list should include `eng` and `osd`. If your distribution does not bundle `osd`,
+install its orientation-data package or the official
+[Tesseract orientation model](https://github.com/tesseract-ocr/tessdata_fast/blob/main/osd.traineddata)
+in the installation's tessdata directory. The production Dockerfile installs the required
+English and orientation packages automatically.
+
+### Local malware scanning and email
+
+The local example defaults to `MALWARE_SCANNER=none` and `MAIL_DRIVER=log`; this is not the
+production safety configuration. To exercise ClamAV locally:
+
+```bash
+docker compose --profile scan up -d
+```
+
+Set `MALWARE_SCANNER=clamav`, `CLAMAV_HOST=127.0.0.1` and `CLAMAV_PORT=3310` in `.env`, then restart
+the app. First-time signature downloads can take several minutes.
+
+With the log mail driver, real email is not delivered. Inspect **Admin → Email outbox** instead,
+or configure a real provider to test verification and password-reset delivery.
+
+### Demo accounts
+
+Development seed accounts all use **`papervault123`**:
 
 | Email | Role |
 | --- | --- |
 | `student@papervault.dev` | Student |
-| `moderator@papervault.dev` | Moderator (one college) |
+| `moderator@papervault.dev` | Moderator |
 | `collegeadmin@papervault.dev` | College admin |
 | `admin@papervault.dev` | Platform admin |
 
-Create your own admin with `npm run admin:create`.
+These credentials are public test fixtures. Do not expose demo accounts on a public deployment.
+Create your own account with `npm run admin:create` when appropriate.
 
-Without mail credentials, emails are not sent. They are recorded at **Admin → Email outbox**
-instead.
+## Configuration
 
-### Useful scripts
+Use `.env.example` for local development and `.env.production.example` for production. Copy a
+**template once**, edit your private copy, and never overwrite a working production environment
+with an example file. Exported environment variables take precedence where supported by the
+runtime and test helper; avoid duplicate keys in configuration files.
 
-| Command | Purpose |
+| Setting | Purpose |
 | --- | --- |
-| `npm run dev` | Development server |
-| `npm run build` / `npm start` | Production build and serve |
-| `npm run verify` | Typecheck + lint + unit tests |
-| `npm run test:e2e` | Playwright end-to-end tests (run `npx playwright install chromium` once) |
-| `npm run test:integration` | Database-backed tests |
-| `npm run admin:create` | Create or promote a platform admin |
-| `npm run db:catalogue` | Load only the college and curriculum catalogue (no demo data) |
-| `npm run db:studio` | Inspect the database |
+| `DATABASE_URL` | PostgreSQL connection; production Compose supplies its internal database URL |
+| `AUTH_SECRET` | Session-signing secret; generate a strong, unique production value |
+| `NEXT_PUBLIC_SITE_URL` | Actual site origin; HTTPS for public production deployments |
+| `SITE_DOMAIN` | Domain served by Caddy in the production stack |
+| `POSTGRES_PASSWORD` | Production Compose database password; required |
+| `CRON_SECRET` | Authorises maintenance; use a strong production value |
+| `STORAGE_DRIVER` | `local` or `s3`; keep files persistent and backed up |
+| `STORAGE_LOCAL_DIR` | Local storage path; Compose mounts `/app/storage` |
+| `S3_*` | Bucket, endpoint, region and credentials when using S3-compatible storage |
+| `MAX_UPLOAD_BYTES` | Default `10485760` bytes: 10 MiB |
+| `MALWARE_SCANNER`, `CLAMAV_*` | Upload scanning; production Compose configures ClamAV |
+| `REDIS_URL` | Shared rate-limit backend; supplied by production Compose |
+| `MAIL_DRIVER`, provider credentials, `MAIL_FROM` | Verification, reset and notification delivery |
+| `ADMIN_EMAIL` | Operations mailbox; also a default for the admin-creation command |
+| `CONTACT_EMAIL`, operator/grievance/security settings | Public legal and security contacts |
+| `REQUIRE_EMAIL_VERIFICATION` | Contribution/account verification policy; keep enabled in production |
+| `REQUIRE_ADMIN_2FA` | Administrator 2FA policy; keep enabled in production |
+| `TRUSTED_PROXY_HOPS` | Trusted proxy count; match your actual proxy topology |
+| `TEACHER_VERIFICATION_ENABLED` | Open or close new teacher-verification applications |
+| `TEACHER_DOC_RETENTION_DAYS`, `TEACHER_REAPPLY_COOLDOWN_DAYS` | Verification-document lifecycle |
+| `SENTRY_DSN` | Optional error reporting; review its privacy implications |
+| `APP_VERSION` | Build identifier reported by the health endpoint |
+| `DONATION_UPI_ID`, `DONATION_PAYEE_NAME`, `DONATION_QR_PATH` | Optional support page; set the UPI ID empty to hide it |
 
----
-
-## Deploy to production
-
-One Docker host (about 2 vCPU / 4 GB RAM or more) runs the whole stack: Caddy, the app, Postgres,
-Redis, ClamAV and a nightly maintenance job.
+Generate separate secrets; do not reuse these outputs across installations:
 
 ```bash
-cp .env.production.example .env.production   # fill in every value; never commit it
-docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
-docker compose -f docker-compose.prod.yml --env-file .env.production run --rm migrate npm run admin:create
+openssl rand -base64 48   # AUTH_SECRET
+openssl rand -hex 32     # CRON_SECRET
+openssl rand -hex 24     # POSTGRES_PASSWORD
 ```
 
-- Point your domain's DNS at the server and open ports **80** and **443**. Caddy gets the HTTPS
-  certificate automatically.
-- Production **never** loads demo data. A fresh database gets only the college and curriculum
-  catalogue.
-- Back up nightly with `deploy/backup.sh` (Postgres) and keep a copy of the uploads volume.
-- Health check: `GET /api/healthz`.
+For email, choose one provider and configure its matching credentials. Gmail requires an App
+Password; SMTP requires a working transport; Resend/Postmark require their API credentials and
+an authorised sender. Production signup and password recovery need real mail delivery.
 
-The full guide, covering environment variables, email, storage, backups and updates, is in
-**[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+## Testing and continuous integration
 
----
+### Unit and integration checks
+
+```bash
+npm run verify
+npm audit --omit=dev --audit-level=high
+```
+
+`verify` runs TypeScript, lint and unit tests. Database integration checks additionally need
+PostgreSQL, a migrated disposable database, the catalogue and the native OCR tools:
+
+```bash
+npm run db:deploy
+npm run db:catalogue
+npm run test:integration
+```
+
+Integration tests create and remove records. They are not safe to run against a live archive.
+
+### Browser checks
+
+> **Browser-test setup resets and demo-seeds the configured database.** Use only a disposable
+> test database. Stop existing development/production test servers before changing test settings;
+> Playwright can otherwise reuse a server with an older environment.
+
+After local setup, configure the following **test-only** values in the test terminal:
+
+```bash
+export REQUIRE_ADMIN_2FA=false
+export CRON_SECRET=local-cron-secret
+export LOGIN_ATTEMPTS_PER_MINUTE=1000
+export REGISTRATIONS_PER_IP_PER_HOUR=1000
+npx playwright install --with-deps chromium
+npm run test:e2e
+```
+
+The suite builds and starts the app when no reusable server is running. `DATABASE_URL` can come
+from the local `.env` or an exported environment variable. CI does not need a real `.env` file.
+CI runs one worker because these workflows share a seeded catalogue/database.
+
+Do not copy the test-only limits or disabled admin-2FA setting into production configuration.
+To generate a local HTML report:
+
+```bash
+npm run test:e2e -- --reporter=line,html
+npx playwright show-report
+```
+
+### Optional real-scan fixtures
+
+Private sample PDFs are not bundled in the repository. Supply your own local copies to enable
+the optional genuine-scan tests:
+
+```bash
+export REAL_SCAN_FIXTURE=/absolute/path/to/four-page-end-sem-scan.pdf
+export REAL_ST_SCAN_FIXTURE=/absolute/path/to/st1-scan.pdf
+npm run test:integration
+npm run test:e2e
+```
+
+Without these paths, the corresponding tests are skipped. Never commit private exam documents,
+student identifiers or other personal data as test fixtures.
+
+### What GitHub checks
+
+Pull requests and pushes to `main` run verification/integration tests, end-to-end tests,
+production dependency audit and a production-image build. CodeQL also checks JavaScript and
+TypeScript, including a scheduled scan. CI installs Poppler and Tesseract for OCR-backed tests.
+
+**CI success does not deploy the website.** The image workflow validates a build; it does not
+publish the image or update your server. Merge after checks pass, then deploy deliberately.
+
+## Production deployment
+
+The recommended setup is a single Docker host with **at least about 2 vCPU / 4 GB RAM** as a
+starting point. ClamAV, OCR and builds consume significant memory; monitor real usage and allow
+more capacity for concurrent uploads. Local file storage assumes one app instance.
+
+### First deployment
+
+1. Install Docker and the Compose v2 plugin.
+2. Point the domain's DNS at the server. Allow inbound HTTP/HTTPS on ports **80/443**.
+3. Clone the repository and create the private production configuration:
+
+   ```bash
+   git clone https://github.com/alexinwebs/papervault.git
+   cd papervault
+   cp .env.production.example .env.production
+   ```
+
+4. Edit `.env.production`: set the domain/site origin, fresh secrets, contacts, working email and
+   storage. The template defaults to S3; choose `STORAGE_DRIVER=local` explicitly if you want the
+   persistent uploads volume instead. Review the optional donation/teacher-verification settings.
+5. Start the stack:
+
+   ```bash
+   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+   ```
+
+6. Create your real platform administrator and enrol 2FA:
+
+   ```bash
+   docker compose -f docker-compose.prod.yml --env-file .env.production run --rm migrate npm run admin:create
+   ```
+
+7. Check health, email delivery, a test upload, moderation and download permissions.
+
+| Service | Responsibility |
+| --- | --- |
+| `caddy` | Public entry point and automatic HTTPS |
+| `app` | Non-root Next.js standalone application with local OCR tools |
+| `migrate` | One-shot schema migrations and catalogue-only initialisation |
+| `db` | PostgreSQL with a persistent volume |
+| `redis` | Shared rate limits |
+| `clamav` | Malware scanning and persistent signatures |
+| `cron` | Periodic purge/retention and notification-retry maintenance |
+
+The migration container normally exits successfully after completing its work. The app waits
+for required dependencies; ClamAV's initial signature download can take several minutes.
+Production Compose does not publish PostgreSQL, Redis or ClamAV ports to the host.
+
+The production migration service does **not** demo-seed. `db:catalogue` loads initial catalogue
+records only when no college catalogue exists; it is not an overwrite/synchronisation command
+for an existing catalogue. Use administration tools or reviewed migrations for later changes.
+
+Keep S3 buckets private and file access permission-checked. Protect `.env.production`, persistent
+volumes, storage credentials and backups. Review the legal policies and operational contacts
+before accepting public submissions. See [the deployment guide](docs/DEPLOYMENT.md) for details.
+
+## Updating an existing deployment
+
+For a clean Git checkout on `main`, back up first, pull the reviewed release and rebuild:
+
+```bash
+git switch main &&
+sh deploy/backup.sh &&
+git pull --ff-only origin main &&
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+```
+
+Use the following to inspect the running stack:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production ps
+docker compose -f docker-compose.prod.yml --env-file .env.production logs --since=10m --tail=100 app
+```
+
+For a ZIP-based installation without Git metadata, export the merged source from your local
+clone, transfer it and extract it over the intended source folder, then rebuild:
+
+```bash
+git archive --format=zip --prefix=papervault/ -o ../papervault-release.zip HEAD
+```
+
+Export from the intended, updated `main` commit. Use an `&&` chain when extracting and rebuilding
+so a missing ZIP cannot accidentally lead to rebuilding old source. Keep production environment
+files and volumes; do not replace them with development examples.
+
+**Never run demo seeding, database reset commands or `docker compose down -v` during an ordinary
+upgrade.** Rebuilding is necessary for source/dependency changes; restarting an old image is not
+an upgrade. The original v14 ZIP does not include later security/CI commits—use current merged
+source when preparing a new deployment.
+
+## Backups and monitoring
+
+### Back up both records and files
+
+```bash
+sh deploy/backup.sh
+```
+
+The supplied script creates a custom-format PostgreSQL dump in `./backups` by default and
+removes its local dumps older than `KEEP_DAYS` (default 14). `BACKUP_DIR` changes the destination.
+Schedule it separately with cron or a systemd timer using your actual checkout path.
+
+- Copy backups off the server; a dump on the same failed disk is not a recovery plan.
+- Back up the local `uploads` volume separately, or configure backup/versioning for S3 objects.
+- Protect configuration/credentials separately and restrict backup access.
+- Rehearse restoration into an isolated database and storage location before an incident.
+- Keep the database and file-backup strategy consistent; one without the other is incomplete.
+
+**The bundled maintenance `cron` service is not a backup service.** It performs application
+maintenance and notification retries; database/file backup scheduling is your responsibility.
+
+### Monitor dependency readiness
+
+`GET /api/healthz` reports the build version, database, storage, scanner and other backend states.
+A database outage returns HTTP 503. Storage/scanner outages can return HTTP 200 with
+`status: "degraded"` while browsing remains available, so monitor the JSON checks as well as the
+HTTP status. A configured scanner outage blocks uploads rather than accepting unscanned files.
+
+Use application logs, uptime monitoring and optional Sentry. Keep `APP_VERSION` meaningful so
+you can distinguish a rebuilt release from an old running image.
+
+## Troubleshooting
+
+| Symptom | What to check |
+| --- | --- |
+| `pdftoppm ENOENT` | Poppler is missing from the machine/container running the test or app; install `poppler-utils` |
+| `tesseract ENOENT` or missing `osd` | Install Tesseract and its English/orientation data; check `tesseract --list-langs` |
+| Detection is incomplete | Use a clear, upright scan with its header visible; preview, correct fields or enter manually |
+| College/branch remains empty | It may not be printed or may be ambiguous; select it instead of treating it as a guessed value |
+| Retry returns the same result | Reads are briefly cached; edited metadata is preserved and failed reads may be cached for 30 seconds |
+| Uploads are paused | Inspect ClamAV readiness/signatures, storage permissions and `/api/healthz` |
+| Emails are not delivered | Check `MAIL_DRIVER`, provider credentials, sender authorisation and Admin → Email outbox |
+| Prisma gets an undefined database URL | Export `DATABASE_URL` or configure the local `.env`; use the updated test helper in CI |
+| CI says `.env not found` | Expected when variables are supplied by CI; inspect the actual failed step, not this message alone |
+| Browser tests fail at setup | Check disposable DB access, migrations, OCR tools and test-only environment values; stop stale servers |
+| Dependency audit fails | Read the advisory, update compatible dependencies and lockfile, then retest; do not disable the audit |
+| A ZIP cannot be found | Verify the exact uploaded filename; stop before rebuilding or you may redeploy old code |
+| UI still looks like an older release | Confirm the deployed source, rebuild the image, check container/build version and refresh the browser |
+
+For a bug report, include steps to reproduce, expected/actual behaviour, device/browser and a
+redacted screenshot or relevant error excerpt. Never post environment files, tokens, passwords,
+private documents or database dumps in issues.
 
 ## Project structure
 
 ```text
-src/app/          Routes (pages, server actions, API handlers)
-src/components/   UI components
-src/lib/          Auth, permissions, mailer, storage, scanner, rate limiting, env checks
-prisma/           Schema, migrations, seed and admin scripts
-tests/            unit/, integration/, e2e/ (Playwright)
-deploy/           Caddyfile and backup script
-docs/             Deployment guide, security notes, technical reference
+.github/workflows/   Verification, browser tests, audits, image-build checks and CodeQL
+prisma/             Database schema, migrations, catalogue/demo seed and admin scripts
+public/             Brand artwork, static assets and self-hosted PDF.js worker
+src/app/            Pages, layouts and API route handlers
+src/components/     Navigation, forms, viewers, dialogs and themed controls
+src/data/           Built-in curriculum/catalogue data
+src/lib/            Auth, permissions, storage, mail, scanner, rate limiting and utilities
+src/server/         Server Actions, repositories and domain services
+src/server/services/ Detection, OCR, upload/grouping and moderation workflows
+tests/unit/         Fast isolated regression checks
+tests/integration/  Database-backed service and upload checks
+tests/e2e/          Browser workflows and responsive checks
+deploy/             Caddy configuration and database-backup script
+docs/               Deployment, security, architecture and upgrade notes
+storage/            Runtime local files; generated and not committed
 ```
 
 ## Documentation
 
-- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): production setup and operations
-- [docs/SECURITY.md](docs/SECURITY.md): threat model, security controls and how to report
-  vulnerabilities
-- [docs/REFERENCE.md](docs/REFERENCE.md): architecture, domain model, paper lifecycle, the full
-  feature list and known gaps
-- [CHANGELOG.md](CHANGELOG.md): release history
+- [Deployment and operations](docs/DEPLOYMENT.md)
+- [Security model and known gaps](docs/SECURITY.md)
+- [Technical reference and feature details](docs/REFERENCE.md)
+- [v14 ZIP upgrade instructions](docs/UPGRADE-v14.md) — base release instructions; include later
+  fixes
+- [Release history](CHANGELOG.md)
+- [Project phases and planning notes](docs/phases.md) — planning, not a promise of shipped features
+
+Package scripts in `package.json` provide `dev`, `build`, `start`, `verify`, `test:unit`,
+`test:integration`, `test:e2e`, `db:deploy`, `db:catalogue`, `db:studio` and `admin:create`.
+`db:seed`/`setup` are destructive demo workflows. Reserve migration-development/schema-push tools
+for development; deploy reviewed migrations to production instead.
 
 ## Contributing
 
-Issues and pull requests are welcome. Before opening a pull request:
+1. Open an issue for a reproducible bug or a focused feature proposal.
+2. Create a branch from the current `main`; keep changes scoped and documented.
+3. Add regression tests for changed behaviour, including manual-entry and failure paths where
+   relevant.
+4. Run verification, relevant database/browser checks and the production dependency audit.
+5. Submit a pull request and address failing checks before merging.
 
-```bash
-npm run verify       # typecheck, lint, unit tests
-npm run test:e2e     # end-to-end tests
-```
+If your change affects the Prisma schema, include its migration. Commit dependency lockfile
+changes with dependency updates. Never commit private `.env` files, uploads, generated build
+output, reports, backups, private exam scans or credentials. Do not use force pushes or weakened
+checks as a substitute for understanding a failing build.
 
-Please don't commit `.env`, `.env.production`, uploads or database dumps. They are already listed in
-`.gitignore`.
+UI feedback can be sent through the site's **Support** section. Testing real flows and reporting
+clear, reproducible feedback is valuable even if you do not contribute code.
 
-## Security
+## Security and responsible use
 
-Please report vulnerabilities privately to the contact in
-[`/.well-known/security.txt`](https://papervault.duckdns.org/.well-known/security.txt), not in
-public issues. See [docs/SECURITY.md](docs/SECURITY.md) for the security model.
+The application uses permission-checked file access, password hashing, revocable sessions,
+optional/required-by-role 2FA, rate limiting, security headers, private support/verification
+attachments and an append-only audit log. These controls reduce risk; passing automated checks
+is not a penetration test, accessibility certification or legal-compliance assessment.
+
+Report suspected vulnerabilities privately through the contact published in
+[security.txt](https://papervault.duckdns.org/.well-known/security.txt), not in public issues.
+Self-hosting operators must configure their own accurate security/legal contacts, access
+policies, data-retention practices and backups. See [security notes](docs/SECURITY.md).
+
+Use takedown/reporting channels for papers that should not be hosted. Avoid sharing personal
+identifiers in scans and supporting documents. Only contribute material you are allowed to share.
 
 ## Support
 
-If PaperVault helped you, you can [buy me a coffee](https://papervault.duckdns.org/coffee) ☕
+- **Product help or feedback:** [PaperVault Support](https://papervault.duckdns.org/support).
+- **Reproducible software bugs:** [GitHub Issues](https://github.com/alexinwebs/papervault/issues).
+- **Optional project support:** [Buy me a coffee](https://papervault.duckdns.org/coffee), when
+  enabled.
+
+Self-hosters should review or clear the donation configuration and bundled QR asset before
+publishing their own installation; do not assume a bundled payment identity belongs to you.
 
 ## License
 
-No license has been chosen yet, so all rights are reserved by the author. Add a `LICENSE` file
-(for example MIT) if you want others to reuse the code.
+PaperVault's original application code and documentation are licensed under the
+[MIT License](LICENSE).
 
+Copyright (c) 2026 Abbas Ansari.
 
-## Automatic paper detection and catalogue grouping (v9–v14)
+You may use, modify and redistribute the software, including commercially, subject to the
+license terms. Retain the copyright and permission notice when distributing copies or
+substantial portions. The software is provided **without warranty**; see `LICENSE` for the
+complete terms.
 
-The upload form offers **Auto-detect**, **Enter manually**, and **Choose existing
-groups**. Auto-detect reads the selected PDF, JPG, PNG or camera capture with a
-non-blocking background request. Reading progress is shown beside the file; users
-can keep editing or switch to manual entry. The reader never overwrites a field
-that the user has already edited. Manual entry skips OCR and never applies a
-late detection result. Enter the college, programme, branch, semester, subject
-name/code, exam type and year; the same transaction creates missing groups when
-the paper is submitted. There is no separate admin setup or create-group step.
-
-College and branch suggestions use a cream/navy searchable dropdown, not the
-browser’s native datalist popup. Use arrow keys and Enter, click a suggestion,
-or type a new value for manual creation. Suggestions wrap on phones and remain
-inside the viewport.
-
-The branch is a single field: choose a catalogue suggestion or type a new name.
-Its grouping code is filled automatically and can be overridden in **More details**.
-University, session, paper set, moderator notes and extra branch listings are
-optional and collapsed by default. Detected session labels remain visible in a
-short summary with an Edit action. Paper status and metadata confirmation remain
-required where applicable to protect current exams and prevent incorrect groups.
-
-Auto-detect asks for a clear PDF or well-lit, straight photo with the header
-visible. **Retry detection** preserves edited details, and choosing a suggestion
-with the mouse protects that field from late detection responses. Successful
-reads remain cached for ten minutes; failed reads may remain cached for 30
-seconds. A retry does not bypass malware checks, concurrency or rate limits.
-
-Text PDFs use `unpdf`;
-scanned pages use Poppler and Tesseract with English and orientation models.
-A selectable watermark/footer does not prevent scanning the image header if it
-lacks meaningful header fields. Missing metadata triggers local Sharp grayscale,
-contrast, light sharpening, orientation and conservative deskew preparation.
-Original, cleaned and bounded angle-bracket header crops are compared; the
-archived paper and duplicate fingerprint are not rewritten by preprocessing.
-When key fields are missing, the reader compares orientation-aware full-page OCR
-with high-resolution block and sparse header layouts. Table-cell labels are
-parsed independently, and agreeing alternatives fill missing fields. Other
-readable details are retained when one field is missing. Printed session ranges
-and numbered tests (such as ST-1 and ST-2) are filled when readable. Exam types inferred
-only from a file name are labelled as suggestions and must be verified.
-Unambiguous academic sessions (2025-26 or 2025-2026) use the start year in
-the year field and preserve the printed session separately. For a known college,
-shared exact subject-code matches may fill a missing programme or semester only
-when all candidates agree; these suggestions still require confirmation, and
-no primary branch is guessed. Printed conflicts are not silently replaced.
-
-No paid AI API, API key, third-party document upload or per-document service
-charge is used. OCR still consumes your server's CPU and ordinary hosting costs.
-
-Detected college, programme, branch, semester, subject name/code, exam type
-and an unambiguous year are matched to the current catalogue. Existing entries
-are reused. If entries are missing, the contributor can review/edit the printed
-values and confirm them; college → programme → branch → semester → subject and
-exam type are created inside the existing submission transaction. Staff do not
-need to add those groups beforehand. New colleges remain **unverified**, and
-papers still enter moderator review, never automatic publication. Missing
-location/university information is stored as “Not specified”, not invented.
-
-Fields that are absent, ambiguous, handwritten or unreadable must be supplied
-or corrected by the contributor. A university heading alone cannot identify
-the college. The manual catalogue picker and “I have this paper” prefill remain
-available. Shared multi-branch headers do not select a branch automatically;
-the contributor chooses or types the primary branch. Unique
-subject abbreviations can be expanded from the relevant college catalogue,
-without replacing the printed code. A new curriculum code may create a distinct
-subject with the same name; the old code is preserved. A subject code conflicting
-with an existing name is rejected rather
-than silently overwriting the catalogue. Archived entries are not resurrected.
-
-### Deploying
-
-Rebuild the app image using your existing production compose command. With the
-standard production files: `docker compose -f docker-compose.prod.yml
---env-file .env.production up -d --build`. The Dockerfile installs `tesseract-ocr`,
-`tesseract-ocr-eng`, `tesseract-ocr-osd` and `poppler-utils` automatically in the non-root runner.
-For a non-Docker Debian/Ubuntu host, install those packages with `apt-get`;
-Amazon Linux uses `tesseract`, `tesseract-langpack-eng`, and `poppler-utils`;
-it also needs the official Tesseract `osd.traineddata` orientation model. The
-Docker image includes this automatically.
-No new Prisma schema migration, API key or environment variable is needed.
-Existing migrations continue to run normally. Do not reset or demo-seed a live
-archive during an upgrade.
-
-### Safety and bounds
-
-- Detection requires an active, email-verified contributor, malware checks,
-  accepted file signatures and the existing 10 MB upload limit. The background
-  endpoint also caps multipart bodies while streaming (including requests with
-  no Content-Length), before parsing their contents.
-- Detection is read-only and limited to 30 requests per user/hour; automatic
-  grouping submissions are limited to 10 per hour, with normal upload limits
-  also applied. New groups are attributed in the audit log.
-- Exact sanitized-file hash, normalized text-content fingerprint and exam-slot
-  duplicate checks still run under database advisory locks. Rejected duplicates
-  roll back newly created groups as well as the paper/session records.
-- Native header detection reads up to two pages. Scan detection starts with page
-  one and uses page two only if core fields remain missing after header retries.
-  Detection has a 75-second OCR subprocess budget (90 seconds at submission),
-  in addition to bounded image preparation. Damaged or encrypted PDFs fall back
-  to editable manual details. Text extraction accepts up to 100
-  PDF pages; scan OCR for final content checks is capped at 12 pages. Partial
-  OCR is never used as a whole-document fingerprint. File-hash and exam-slot
-  protection still applies when OCR is unavailable or incomplete.
-- OCR uses bounded concurrency, image rendering size, process timeouts, and
-  short-lived private temporary files. At most two OCR jobs run per process.
-  Same-file concurrent reads share one job. Versioned results use a bounded
-  in-memory cache (64 entries, successful reads 10 minutes, failures 30 seconds).
-  Malware scanning still happens before a detection cache hit is used. Unclear images fall back to editable manual details.
-- English printed papers work best. Similar-looking text is not guaranteed to
-  produce identical OCR; contributors must review detected metadata. This is an
-  automation assistant, not a guarantee that every scan can be classified.
-
-
-## Preview before submission and responsive layout (v13)
-
-After choosing a PDF, JPG or PNG, click **Preview paper**. A scroll-locked dialog
-shows the selected local file before it is submitted. PDFs use the self-hosted
-PDF.js viewer with page navigation and zoom, rendering one page at a time to keep
-phone memory use bounded. Preview itself does not send the document to a server
-or third-party service (Auto-detect separately sends it to your own server).
-Closing the preview preserves the form. Malformed PDFs offer a replacement or
-Open original rather than removing typed details. Viewer navigation is capped
-at 60 pages; Open original remains available.
-
-The upload page uses a two-column file/details layout at desktop widths and a
-stacked form below 1280px. Content fills the available desktop workspace up to a
-centred 1600px maximum. Phone inputs use 16px text and 44px controls; navigation,
-search, cards and tables retain their responsive layouts. Optional fields remain
-collapsed. Conflicting OCR/catalogue readings are labelled for confirmation, not
-silently promoted to high confidence.
-
-Upgrade by rebuilding your existing production Compose deployment. Sharp is an
-explicit application dependency; do not just restart an old image. Keep your
-production environment, database and uploaded files. No cloud key, OCR-service
-subscription or additional schema migration is required.
-
-For the v14 ZIP upgrade, see [step-by-step instructions](docs/UPGRADE-v14.md).
+Third-party dependencies and bundled assets retain their respective licenses and notices,
+including the font notices in `public/pdfjs/standard_fonts/`. The MIT license does not grant
+rights to third-party question papers, uploaded documents or other content hosted through
+PaperVault; obtain the relevant rights holder's permission where required.
