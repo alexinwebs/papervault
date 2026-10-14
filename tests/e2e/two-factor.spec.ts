@@ -1,3 +1,4 @@
+import { dismissActionPopup } from "./popups";
 import { expect, test } from "@playwright/test";
 import { currentTotp } from "@/lib/totp";
 
@@ -39,6 +40,8 @@ test("a student can enrol an authenticator and is then challenged at sign-in", a
   const recoveryCodes = await page.locator("li.pv-panel-flat").allTextContents();
   expect(recoveryCodes.length).toBeGreaterThan(5);
 
+  await dismissActionPopup(page);
+
   // Sign out and back in: the password alone is no longer enough.
   await page.getByRole("button", { name: /sign out/i }).first().click();
   await expect(page.getByRole("link", { name: /^sign in$/i })).toBeVisible();
@@ -57,6 +60,8 @@ test("a student can enrol an authenticator and is then challenged at sign-in", a
     await page.getByRole("button", { name: /verify and sign in/i }).click({ timeout: 5_000 });
     await expect(page.getByText(/that code is not valid/i)).toBeVisible({ timeout: 15_000 });
   }).toPass({ timeout: 60_000 });
+
+  await dismissActionPopup(page);
 
   // An unused recovery code gets the user in.
   await page.locator("#token").fill(recoveryCodes[0].trim());

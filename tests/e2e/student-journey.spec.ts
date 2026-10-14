@@ -1,3 +1,4 @@
+import { dismissActionPopup } from "./popups";
 import { expect, test, type Page } from "@playwright/test";
 import { makePdf } from "./fixtures";
 
@@ -123,6 +124,7 @@ test("upload → moderation → publish → discoverable", async ({ page }) => {
   await page.locator("#examTypeId").selectOption({ index: 1 });
   await page.locator("#academicYear").selectOption({ index: 3 });
   await page.locator("#examClassification").selectOption("PAST");
+  await page.getByTestId("more-details").locator("summary").click();
   await page.locator("#sessionLabel").fill(marker);
   await page.locator("#file").setInputFiles({
     name: "sample.pdf",
@@ -131,7 +133,7 @@ test("upload → moderation → publish → discoverable", async ({ page }) => {
   });
   await page.getByRole("button", { name: /submit paper/i }).click();
   // Ingest hashes, sanitises and scans the PDF, so allow a generous window.
-  await expect(page.getByText(/Paper secured/i)).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByTestId("success-popup").filter({ hasText: /Paper secured/i })).toBeVisible({ timeout: 90_000 });
 
   // 2. It is queued, not published.
   await page.goto("/library");
@@ -156,7 +158,9 @@ test("upload → moderation → publish → discoverable", async ({ page }) => {
 
   await page.reload();
   await page.waitForLoadState("networkidle");
+  await dismissActionPopup(page);
   await applyDecision(page, "PUBLISH", "PUBLISHED");
+  await dismissActionPopup(page);
 
   // 4. The published paper is visible to everyone, with its file.
   const paperUrl = page.url().replace("/moderation/", "/papers/").split("?")[0];

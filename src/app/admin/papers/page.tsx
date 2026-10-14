@@ -1,3 +1,4 @@
+import { SuccessPopup } from "@/components/SuccessPopup";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -38,9 +39,7 @@ export default async function AdminPapersPage({
       />
 
       {done ? (
-        <p role="status" className="pv-panel-flat bg-mint px-3 py-2 font-mono text-xs">
-          {done}
-        </p>
+        <SuccessPopup message={`${done}`} />
       ) : null}
 
       <Panel className="px-4 py-4">

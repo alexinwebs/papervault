@@ -16,11 +16,11 @@ export function SettingsForm({
   email: string;
   role: string;
 }) {
-  const [state, action] = useActionState(updateSettingsAction, idle);
+  const [state, action, statePending] = useActionState(updateSettingsAction, idle);
 
   return (
     <form action={action} className="flex flex-col gap-4">
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <div>
         <label className="pv-label" htmlFor="name">
           Display name

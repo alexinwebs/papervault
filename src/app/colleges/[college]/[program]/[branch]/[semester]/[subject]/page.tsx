@@ -9,7 +9,7 @@ import { publicPapersForSubject } from "@/server/repositories/papers";
 import { requestCount } from "@/server/services/requests";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
-import { branchHref, collegeHref, programHref, semesterHref } from "@/lib/links";
+import { branchHref, collegeHref, programHref, semesterHref, uploadHref } from "@/lib/links";
 import { cx } from "@/lib/utils";
 
 type Params = {
@@ -112,7 +112,11 @@ export default async function SubjectPage({ params, searchParams }: Params) {
         title={subject.name}
         description={`${subject.code}${subject.curriculumVersion ? ` · ${subject.curriculumVersion.label}` : ""}`}
         aside={
-          <Link href="/upload" className="pv-btn-secondary">
+          <Link
+            href={uploadHref({ subjectId: subject.id, examType: activeExam?.code })}
+            className="pv-btn-secondary"
+            data-testid="contribute-link"
+          >
             Contribute a paper
           </Link>
         }
@@ -145,7 +149,11 @@ export default async function SubjectPage({ params, searchParams }: Params) {
             ) : (
               <p className="font-mono text-xs">Pick an exam type above to request a specific paper.</p>
             )}
-            <Link href="/upload" className="pv-btn-secondary">
+            <Link
+              href={uploadHref({ subjectId: subject.id, examType: activeExam?.code, year: requestYear })}
+              className="pv-btn-secondary"
+              data-testid="have-paper-link"
+            >
               I have this paper
             </Link>
           </div>

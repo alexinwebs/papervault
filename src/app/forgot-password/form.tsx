@@ -6,10 +6,10 @@ import { idle } from "@/server/actions/types";
 import { FieldError, FormBanner, SubmitButton } from "@/components/Form";
 
 export function ForgotPasswordForm() {
-  const [state, action] = useActionState(forgotPasswordAction, idle);
+  const [state, action, statePending] = useActionState(forgotPasswordAction, idle);
   return (
     <form action={action} className="flex flex-col gap-3">
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <div>
         <label className="pv-label" htmlFor="email">
           Email address

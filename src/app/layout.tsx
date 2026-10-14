@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Space_Mono } from "next/font/google";
 import "./globals.css";
+import { SuccessPopupProvider } from "@/components/SuccessPopup";
 import { AppShell } from "@/components/AppShell";
 import { configuredSiteUrl } from "@/lib/site";
 
@@ -37,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${display.variable} ${ui.variable}`}>
       <body>
-        <AppShell>{children}</AppShell>
+        <SuccessPopupProvider><AppShell>{children}</AppShell></SuccessPopupProvider>
       </body>
     </html>
   );

@@ -1,5 +1,7 @@
 "use client";
 
+import { PasswordInput } from "@/components/PasswordInput";
+import { useSuccessPopup } from "@/components/SuccessPopup";
 import { useActionState, useEffect, useRef } from "react";
 import { FieldError, FormBanner, SubmitButton } from "@/components/Form";
 import { idle, type ActionState } from "@/server/actions/types";
@@ -9,7 +11,7 @@ import { usePathname } from "next/navigation";
 export type FieldSpec = {
   name: string;
   label: string;
-  type?: "text" | "number" | "select" | "textarea" | "checkbox";
+  type?: "text" | "password" | "number" | "select" | "textarea" | "checkbox";
   placeholder?: string;
   defaultValue?: string | number;
   required?: boolean;
@@ -41,7 +43,7 @@ export function AdminForm({
   resetOnSuccess?: boolean;
   columns?: 1 | 2;
 }) {
-  const [state, formAction] = useActionState(action, idle);
+  const [state, formAction, statePending] = useActionState(action, idle);
   const ref = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -111,6 +113,10 @@ export function AdminForm({
                       placeholder={field.placeholder}
                       className="pv-input"
                     />
+                  ) : field.type === "password" ? (
+                    <PasswordInput id={id} name={field.name} autoComplete="new-password"
+                      defaultValue={String(field.defaultValue ?? "")} placeholder={field.placeholder}
+                      required={field.required} />
                   ) : (
                     <input
                       id={id}
@@ -132,7 +138,7 @@ export function AdminForm({
           );
         })}
       </div>
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <div>
         <SubmitButton className="px-4 py-2">{submitLabel}</SubmitButton>
       </div>
@@ -157,7 +163,7 @@ export function DeleteButton({
   collegeId?: string;
   compact?: boolean;
 }) {
-  const [state, formAction] = useActionState(deleteEntityAction, idle);
+  const [state, formAction, statePending] = useActionState(deleteEntityAction, idle);
   const blocked = Boolean(state.message) && !state.ok;
   // The action navigates on success, so it needs to know where we are.
   const pathname = usePathname();
@@ -187,14 +193,7 @@ export function DeleteButton({
       >
         Delete
       </SubmitButton>
-      {state.message ? (
-        <span
-          role="status"
-          className={`font-sans text-[11px] ${state.ok ? "text-ink/60" : "text-red-700"}`}
-        >
-          {state.message}
-        </span>
-      ) : null}
+      <FormBanner pending={statePending} state={state} />
     </form>
   );
 }
@@ -209,7 +208,8 @@ export function PaperAdminForm({
   action: string;
   label: string;
 }) {
-  const [state, formAction] = useActionState(adminPaperAction, idle);
+  const [state, formAction, statePending] = useActionState(adminPaperAction, idle);
+  useSuccessPopup(state, statePending);
   return (
     <form action={formAction} className="inline">
       <input type="hidden" name="paperId" value={paperId} />

@@ -1,16 +1,17 @@
 "use client";
 
+import { PasswordInput } from "@/components/PasswordInput";
 import { useActionState } from "react";
 import { registerAction } from "@/server/actions/auth";
 import { idle } from "@/server/actions/types";
 import { FieldError, FormBanner, SubmitButton } from "@/components/Form";
 
 export function RegisterForm({ colleges }: { colleges: { id: string; name: string }[] }) {
-  const [state, action] = useActionState(registerAction, idle);
+  const [state, action, statePending] = useActionState(registerAction, idle);
 
   return (
     <form action={action} className="flex flex-col gap-4">
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <div>
         <label className="pv-label" htmlFor="name">
           Name
@@ -29,10 +30,9 @@ export function RegisterForm({ colleges }: { colleges: { id: string; name: strin
         <label className="pv-label" htmlFor="password">
           Password
         </label>
-        <input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           className="pv-input"
           required
           autoComplete="new-password"

@@ -1,11 +1,10 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { EmptyState, PageHeading, Panel } from "@/components/ui";
 import { getSessionUser } from "@/lib/auth";
 import { listInbox, unreadCount } from "@/server/services/inbox";
 import { formatDate } from "@/lib/utils";
-import { MarkAllReadForm, MarkReadForm } from "./forms";
+import { OpenMessageForm, MarkAllReadForm, MarkReadForm } from "./forms";
 
 export const metadata: Metadata = { title: "Notifications", robots: { index: false } };
 
@@ -38,7 +37,7 @@ export default async function InboxPage() {
           {messages.map((message) => {
             const isUnread = !message.readAt;
             return (
-              <li key={message.id}>
+              <li key={message.id} data-testid="inbox-message" data-unread={isUnread}>
                 <Panel
                   className={`flex flex-col gap-2 px-4 py-3 ${isUnread ? "bg-yellow" : "bg-paper"}`}
                 >
@@ -59,13 +58,7 @@ export default async function InboxPage() {
                   <p className="font-sans text-sm text-ink/85">{message.body}</p>
                   <div className="flex flex-wrap items-center gap-2">
                     {message.href ? (
-                      <Link
-                        href={message.href}
-                        prefetch={false}
-                        className="pv-btn-secondary px-3 py-1 text-xs"
-                      >
-                        Open
-                      </Link>
+                      <OpenMessageForm id={message.id} />
                     ) : null}
                     {isUnread ? <MarkReadForm id={message.id} /> : null}
                   </div>

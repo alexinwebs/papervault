@@ -1,5 +1,6 @@
 "use client";
 
+import { SuccessPopup, useSuccessPopup } from "./SuccessPopup";
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { MessageSquare, Reply, Flag, Trash2, Pencil } from "lucide-react";
@@ -50,7 +51,8 @@ function Composer({
   onDone?: () => void;
   compact?: boolean;
 }) {
-  const [state, action] = useActionState(addCommentAction, idle);
+  const [state, action, statePending] = useActionState(addCommentAction, idle);
+  useSuccessPopup(state, statePending);
   const ref = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -78,7 +80,7 @@ function Composer({
         className="pv-input resize-y"
       />
       <FieldError error={state.fieldErrors?.body} />
-      {state.ok ? null : <FormBanner state={state} />}
+      {state.ok ? null : <FormBanner state={state.ok ? idle : state} />}
       <div className="flex items-center gap-2">
         <SubmitButton className="px-4 py-2 text-xs" pendingLabel="Posting…">
           {parentId ? "Post reply" : "Post comment"}
@@ -102,7 +104,8 @@ function EditForm({
   paperId: string;
   onDone: () => void;
 }) {
-  const [state, action] = useActionState(editCommentAction, idle);
+  const [state, action, statePending] = useActionState(editCommentAction, idle);
+  useSuccessPopup(state, statePending);
   useEffect(() => {
     if (state.ok) onDone();
   }, [state, onDone]);
@@ -122,7 +125,7 @@ function EditForm({
         className="pv-input resize-y"
       />
       <FieldError error={state.fieldErrors?.body} />
-      <FormBanner state={state} />
+      <FormBanner state={state.ok ? idle : state} />
       <div className="flex gap-2">
         <SubmitButton className="px-3 py-1 text-xs" pendingLabel="Saving…">
           Save
@@ -144,7 +147,8 @@ function RemoveForm({
   paperId: string;
   asModerator: boolean;
 }) {
-  const [state, action] = useActionState(removeCommentAction, idle);
+  const [state, action, statePending] = useActionState(removeCommentAction, idle);
+  useSuccessPopup(state, statePending);
   return (
     <form
       action={action}
@@ -181,7 +185,8 @@ function RemoveForm({
 }
 
 function ReportForm({ commentId, onDone }: { commentId: string; onDone: () => void }) {
-  const [state, action] = useActionState(reportCommentAction, idle);
+  const [state, action, statePending] = useActionState(reportCommentAction, idle);
+  useSuccessPopup(state, statePending);
   useEffect(() => {
     if (state.ok) {
       const timer = window.setTimeout(onDone, 1_500);
@@ -221,11 +226,7 @@ function ReportForm({ commentId, onDone }: { commentId: string; onDone: () => vo
       <button type="button" onClick={onDone} className="pv-btn-ghost px-2 py-1 text-xs">
         Cancel
       </button>
-      {state.message ? (
-        <span className={`text-[11px] ${state.ok ? "text-ink/70" : "text-red-700"}`}>
-          {state.message}
-        </span>
-      ) : null}
+      <FormBanner state={state.ok ? idle : state} />
     </form>
   );
 }
@@ -396,9 +397,7 @@ export function Discussion({
 
       <div className="mt-3 flex flex-col gap-3">
         {flash ? (
-          <p role="status" className="pv-panel-flat bg-mint px-3 py-2 font-sans text-xs">
-            {flash}
-          </p>
+          <SuccessPopup message={flash} />
         ) : null}
         {locked ? (
           <p className="pv-panel-flat bg-cream px-3 py-2 font-sans text-xs text-ink/70">

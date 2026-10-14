@@ -1,3 +1,4 @@
+import { SuccessPopup } from "@/components/SuccessPopup";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
@@ -51,9 +52,7 @@ export default async function AdminMemberPage({
       />
 
       {done ? (
-        <p role="status" className="pv-panel-flat bg-mint px-3 py-2 font-mono text-xs">
-          {done}
-        </p>
+        <SuccessPopup message={`${done}`} />
       ) : null}
 
       <div className="flex flex-wrap gap-2">

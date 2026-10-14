@@ -14,7 +14,7 @@ export type ListingOption = {
 
 /** Moderator control: which other branches this paper is also listed under. */
 export function PaperListingsForm({ paperId, options }: { paperId: string; options: ListingOption[] }) {
-  const [state, action] = useActionState(setPaperListingsAction, idle);
+  const [state, action, statePending] = useActionState(setPaperListingsAction, idle);
   if (options.length === 0) {
     return (
       <p className="font-sans text-[11px] leading-relaxed text-ink/70">
@@ -24,7 +24,7 @@ export function PaperListingsForm({ paperId, options }: { paperId: string; optio
   }
   return (
     <form action={action} className="flex flex-col gap-2" data-testid="listings-form">
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <input type="hidden" name="paperId" value={paperId} />
       {options.map((option) => (
         <label key={option.id} className="flex items-start gap-2 font-sans text-sm">

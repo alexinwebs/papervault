@@ -1,5 +1,6 @@
 "use client";
 
+import { useSuccessPopup } from "@/components/SuccessPopup";
 import { useActionState } from "react";
 import { SubmitButton } from "@/components/Form";
 import { idle } from "@/server/actions/types";
@@ -24,7 +25,8 @@ export function MemberActionButton({
   withReason?: boolean;
   disabled?: boolean;
 }) {
-  const [state, formAction] = useActionState(memberActionAction, idle);
+  const [state, formAction, statePending] = useActionState(memberActionAction, idle);
+  useSuccessPopup(state, statePending);
 
   return (
     <form

@@ -37,6 +37,8 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0
 ARG APP_VERSION=dev
 ENV APP_VERSION=${APP_VERSION}
+RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng tesseract-ocr-osd poppler-utils \
+  && rm -rf /var/lib/apt/lists/*
 RUN groupadd --system --gid 1001 app && useradd --system --uid 1001 --gid app app \
   && mkdir -p /app/storage && chown app:app /app/storage
 COPY --from=builder --chown=app:app /app/public ./public

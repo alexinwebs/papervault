@@ -1,24 +1,24 @@
 "use client";
 
+import { PasswordInput } from "@/components/PasswordInput";
 import { useActionState } from "react";
 import { resetPasswordAction } from "@/server/actions/auth";
 import { idle } from "@/server/actions/types";
 import { FieldError, FormBanner, SubmitButton } from "@/components/Form";
 
 export function ResetPasswordForm({ token }: { token: string }) {
-  const [state, action] = useActionState(resetPasswordAction, idle);
+  const [state, action, statePending] = useActionState(resetPasswordAction, idle);
   return (
     <form action={action} className="flex flex-col gap-3">
       <input type="hidden" name="token" value={token} />
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <div>
         <label className="pv-label" htmlFor="password">
           New password
         </label>
-        <input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="new-password"
           required
           className="pv-input"
@@ -32,10 +32,9 @@ export function ResetPasswordForm({ token }: { token: string }) {
         <label className="pv-label" htmlFor="confirmPassword">
           Confirm new password
         </label>
-        <input
+        <PasswordInput
           id="confirmPassword"
           name="confirmPassword"
-          type="password"
           autoComplete="new-password"
           required
           className="pv-input"

@@ -27,13 +27,13 @@ export function NewTicketForm({
   };
   maxBytes: number;
 }) {
-  const [state, action] = useActionState(createTicketAction, idle);
+  const [state, action, statePending] = useActionState(createTicketAction, idle);
   const [category, setCategory] = useState<string>(defaults.category);
   const [token] = useState(newToken);
   const err = state.fieldErrors ?? {};
   return (
     <form action={action} className="flex flex-col gap-4" data-testid="new-ticket">
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <input type="hidden" name="clientToken" value={token} />
       <input type="hidden" name="relatedPaperId" value={defaults.relatedPaperId} />
       <input type="hidden" name="relatedCommentId" value={defaults.relatedCommentId} />
@@ -154,7 +154,7 @@ export function NewTicketForm({
 }
 
 export function TicketReplyForm({ ticketId, maxBytes }: { ticketId: string; maxBytes: number }) {
-  const [state, action] = useActionState(replyTicketAction, idle);
+  const [state, action, statePending] = useActionState(replyTicketAction, idle);
   const [token, setToken] = useState(newToken);
   const err = state.fieldErrors ?? {};
   return (
@@ -173,13 +173,13 @@ export function TicketReplyForm({ ticketId, maxBytes }: { ticketId: string; maxB
       <FieldError error={err.body} />
       <DocumentPicker name="attachments" label="Attachments (optional)" maxFiles={3} maxBytes={maxBytes} />
       <SubmitButton className="self-start">Send reply</SubmitButton>
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
     </form>
   );
 }
 
 export function CloseTicketForm({ ticketId }: { ticketId: string }) {
-  const [state, action] = useActionState(closeTicketAction, idle);
+  const [state, action, statePending] = useActionState(closeTicketAction, idle);
   return (
     <form
       action={action}
@@ -192,7 +192,7 @@ export function CloseTicketForm({ ticketId }: { ticketId: string }) {
       <SubmitButton variant="secondary" className="self-start px-3 py-1.5 text-xs">
         Close ticket
       </SubmitButton>
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
     </form>
   );
 }

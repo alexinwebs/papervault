@@ -1,5 +1,6 @@
 "use client";
 
+import { useScrollLock } from "./useScrollLock";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { SidebarNav, type PinnedNavCollege } from "./Sidebar";
@@ -19,16 +20,15 @@ export function MobileNav({
   coffee?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  useScrollLock(open);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
     document.addEventListener("keydown", onKey);
-    document.body.style.overflow = open ? "hidden" : "";
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
     };
   }, [open]);
 
@@ -56,7 +56,7 @@ export function MobileNav({
             role="dialog"
             aria-modal="true"
             aria-label="Navigation"
-            className="absolute inset-y-0 left-0 flex w-[min(86vw,300px)] flex-col overflow-y-auto border-r-2 border-ink bg-blue-light px-4 py-4"
+            className="absolute inset-y-0 left-0 flex w-[min(86vw,300px)] flex-col overflow-y-auto overscroll-contain border-r-2 border-ink bg-blue-light px-4 py-4"
           >
             <div className="mb-4 flex items-center justify-between">
               <span className="flex items-center gap-2">

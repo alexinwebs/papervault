@@ -54,7 +54,7 @@ Live: **<https://papervault.duckdns.org>**
 **Requirements:** Node 22+, npm, Docker.
 
 ```bash
-git clone https://github.com/alexinwebs/papervault.git
+git clone https://github.com/<your-username>/papervault.git
 cd papervault
 npm install
 cp .env.example .env      # local defaults; add Gmail settings to send real email
@@ -162,3 +162,144 @@ If PaperVault helped you, you can [buy me a coffee](https://papervault.duckdns.o
 
 No license has been chosen yet, so all rights are reserved by the author. Add a `LICENSE` file
 (for example MIT) if you want others to reuse the code.
+
+
+## Automatic paper detection and catalogue grouping (v9–v14)
+
+The upload form offers **Auto-detect**, **Enter manually**, and **Choose existing
+groups**. Auto-detect reads the selected PDF, JPG, PNG or camera capture with a
+non-blocking background request. Reading progress is shown beside the file; users
+can keep editing or switch to manual entry. The reader never overwrites a field
+that the user has already edited. Manual entry skips OCR and never applies a
+late detection result. Enter the college, programme, branch, semester, subject
+name/code, exam type and year; the same transaction creates missing groups when
+the paper is submitted. There is no separate admin setup or create-group step.
+
+College and branch suggestions use a cream/navy searchable dropdown, not the
+browser’s native datalist popup. Use arrow keys and Enter, click a suggestion,
+or type a new value for manual creation. Suggestions wrap on phones and remain
+inside the viewport.
+
+The branch is a single field: choose a catalogue suggestion or type a new name.
+Its grouping code is filled automatically and can be overridden in **More details**.
+University, session, paper set, moderator notes and extra branch listings are
+optional and collapsed by default. Detected session labels remain visible in a
+short summary with an Edit action. Paper status and metadata confirmation remain
+required where applicable to protect current exams and prevent incorrect groups.
+
+Auto-detect asks for a clear PDF or well-lit, straight photo with the header
+visible. **Retry detection** preserves edited details, and choosing a suggestion
+with the mouse protects that field from late detection responses. Successful
+reads remain cached for ten minutes; failed reads may remain cached for 30
+seconds. A retry does not bypass malware checks, concurrency or rate limits.
+
+Text PDFs use `unpdf`;
+scanned pages use Poppler and Tesseract with English and orientation models.
+A selectable watermark/footer does not prevent scanning the image header if it
+lacks meaningful header fields. Missing metadata triggers local Sharp grayscale,
+contrast, light sharpening, orientation and conservative deskew preparation.
+Original, cleaned and bounded angle-bracket header crops are compared; the
+archived paper and duplicate fingerprint are not rewritten by preprocessing.
+When key fields are missing, the reader compares orientation-aware full-page OCR
+with high-resolution block and sparse header layouts. Table-cell labels are
+parsed independently, and agreeing alternatives fill missing fields. Other
+readable details are retained when one field is missing. Printed session ranges
+and numbered tests (such as ST-1 and ST-2) are filled when readable. Exam types inferred
+only from a file name are labelled as suggestions and must be verified.
+Unambiguous academic sessions (2025-26 or 2025-2026) use the start year in
+the year field and preserve the printed session separately. For a known college,
+shared exact subject-code matches may fill a missing programme or semester only
+when all candidates agree; these suggestions still require confirmation, and
+no primary branch is guessed. Printed conflicts are not silently replaced.
+
+No paid AI API, API key, third-party document upload or per-document service
+charge is used. OCR still consumes your server's CPU and ordinary hosting costs.
+
+Detected college, programme, branch, semester, subject name/code, exam type
+and an unambiguous year are matched to the current catalogue. Existing entries
+are reused. If entries are missing, the contributor can review/edit the printed
+values and confirm them; college → programme → branch → semester → subject and
+exam type are created inside the existing submission transaction. Staff do not
+need to add those groups beforehand. New colleges remain **unverified**, and
+papers still enter moderator review, never automatic publication. Missing
+location/university information is stored as “Not specified”, not invented.
+
+Fields that are absent, ambiguous, handwritten or unreadable must be supplied
+or corrected by the contributor. A university heading alone cannot identify
+the college. The manual catalogue picker and “I have this paper” prefill remain
+available. Shared multi-branch headers do not select a branch automatically;
+the contributor chooses or types the primary branch. Unique
+subject abbreviations can be expanded from the relevant college catalogue,
+without replacing the printed code. A new curriculum code may create a distinct
+subject with the same name; the old code is preserved. A subject code conflicting
+with an existing name is rejected rather
+than silently overwriting the catalogue. Archived entries are not resurrected.
+
+### Deploying
+
+Rebuild the app image using your existing production compose command. With the
+standard production files: `docker compose -f docker-compose.prod.yml
+--env-file .env.production up -d --build`. The Dockerfile installs `tesseract-ocr`,
+`tesseract-ocr-eng`, `tesseract-ocr-osd` and `poppler-utils` automatically in the non-root runner.
+For a non-Docker Debian/Ubuntu host, install those packages with `apt-get`;
+Amazon Linux uses `tesseract`, `tesseract-langpack-eng`, and `poppler-utils`;
+it also needs the official Tesseract `osd.traineddata` orientation model. The
+Docker image includes this automatically.
+No new Prisma schema migration, API key or environment variable is needed.
+Existing migrations continue to run normally. Do not reset or demo-seed a live
+archive during an upgrade.
+
+### Safety and bounds
+
+- Detection requires an active, email-verified contributor, malware checks,
+  accepted file signatures and the existing 10 MB upload limit. The background
+  endpoint also caps multipart bodies while streaming (including requests with
+  no Content-Length), before parsing their contents.
+- Detection is read-only and limited to 30 requests per user/hour; automatic
+  grouping submissions are limited to 10 per hour, with normal upload limits
+  also applied. New groups are attributed in the audit log.
+- Exact sanitized-file hash, normalized text-content fingerprint and exam-slot
+  duplicate checks still run under database advisory locks. Rejected duplicates
+  roll back newly created groups as well as the paper/session records.
+- Native header detection reads up to two pages. Scan detection starts with page
+  one and uses page two only if core fields remain missing after header retries.
+  Detection has a 75-second OCR subprocess budget (90 seconds at submission),
+  in addition to bounded image preparation. Damaged or encrypted PDFs fall back
+  to editable manual details. Text extraction accepts up to 100
+  PDF pages; scan OCR for final content checks is capped at 12 pages. Partial
+  OCR is never used as a whole-document fingerprint. File-hash and exam-slot
+  protection still applies when OCR is unavailable or incomplete.
+- OCR uses bounded concurrency, image rendering size, process timeouts, and
+  short-lived private temporary files. At most two OCR jobs run per process.
+  Same-file concurrent reads share one job. Versioned results use a bounded
+  in-memory cache (64 entries, successful reads 10 minutes, failures 30 seconds).
+  Malware scanning still happens before a detection cache hit is used. Unclear images fall back to editable manual details.
+- English printed papers work best. Similar-looking text is not guaranteed to
+  produce identical OCR; contributors must review detected metadata. This is an
+  automation assistant, not a guarantee that every scan can be classified.
+
+
+## Preview before submission and responsive layout (v13)
+
+After choosing a PDF, JPG or PNG, click **Preview paper**. A scroll-locked dialog
+shows the selected local file before it is submitted. PDFs use the self-hosted
+PDF.js viewer with page navigation and zoom, rendering one page at a time to keep
+phone memory use bounded. Preview itself does not send the document to a server
+or third-party service (Auto-detect separately sends it to your own server).
+Closing the preview preserves the form. Malformed PDFs offer a replacement or
+Open original rather than removing typed details. Viewer navigation is capped
+at 60 pages; Open original remains available.
+
+The upload page uses a two-column file/details layout at desktop widths and a
+stacked form below 1280px. Content fills the available desktop workspace up to a
+centred 1600px maximum. Phone inputs use 16px text and 44px controls; navigation,
+search, cards and tables retain their responsive layouts. Optional fields remain
+collapsed. Conflicting OCR/catalogue readings are labelled for confirmation, not
+silently promoted to high confidence.
+
+Upgrade by rebuilding your existing production Compose deployment. Sharp is an
+explicit application dependency; do not just restart an old image. Keep your
+production environment, database and uploaded files. No cloud key, OCR-service
+subscription or additional schema migration is required.
+
+For the v14 ZIP upgrade, see [step-by-step instructions](docs/UPGRADE-v14.md).

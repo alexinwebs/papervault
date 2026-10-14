@@ -1,5 +1,7 @@
 "use client";
 
+import { PasswordInput } from "@/components/PasswordInput";
+import { SuccessPopup } from "@/components/SuccessPopup";
 import Image from "next/image";
 import { useActionState, useState, useTransition } from "react";
 import { ShieldCheck } from "lucide-react";
@@ -36,8 +38,8 @@ export function TwoFactorPanel({
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const [starting, startTransition] = useTransition();
-  const [confirmState, confirmAction] = useActionState(confirmTotpAction, idle);
-  const [disableState, disableAction] = useActionState(disableTotpAction, idle);
+  const [confirmState, confirmAction, confirmStatePending] = useActionState(confirmTotpAction, idle);
+  const [disableState, disableAction, disableStatePending] = useActionState(disableTotpAction, idle);
 
   const codes = (confirmState.data as { recoveryCodes?: string[] } | undefined)?.recoveryCodes;
 
@@ -45,9 +47,7 @@ export function TwoFactorPanel({
   if (codes?.length) {
     return (
       <div className="flex flex-col gap-3">
-        <p role="status" className="pv-panel-flat bg-mint px-3 py-2 font-sans text-sm">
-          {confirmState.message}
-        </p>
+        <SuccessPopup message={confirmState.message} />
         <p className="font-sans text-sm text-ink/80">
           Each code works once, if you lose your phone. Store them somewhere safe — they will not
           be shown again.
@@ -81,15 +81,14 @@ export function TwoFactorPanel({
           </p>
         ) : (
           <form action={disableAction} className="flex flex-wrap items-end gap-2">
-            <FormBanner state={disableState} />
+            <FormBanner pending={disableStatePending} state={disableState} />
             <div className="grow">
               <label className="pv-label" htmlFor="totp-disable-password">
                 Confirm your password to switch it off
               </label>
-              <input
+              <PasswordInput
                 id="totp-disable-password"
                 name="password"
-                type="password"
                 autoComplete="current-password"
                 required
                 className="pv-input"
@@ -169,7 +168,7 @@ export function TwoFactorPanel({
         </li>
       </ol>
       <form action={confirmAction} className="flex flex-wrap items-end gap-2">
-        <FormBanner state={confirmState} />
+        <FormBanner pending={confirmStatePending} state={confirmState} />
         <div>
           <label className="pv-label" htmlFor="totp-token">
             Code from your app

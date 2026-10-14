@@ -1,3 +1,4 @@
+import { dismissActionPopup } from "./popups";
 import { expect, test } from "@playwright/test";
 
 const PASSWORD = "papervault123";
@@ -51,6 +52,8 @@ test("erasing an account wipes the identity and locks the password out", async (
 
   // The account survived, so the export still resolves.
   expect((await page.request.get("/api/account/export")).status()).toBe(200);
+
+  await dismissActionPopup(page);
 
   // Now confirm properly. Both fields are refilled: a failed submit may have
   // re-rendered the form.

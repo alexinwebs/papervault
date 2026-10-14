@@ -1,5 +1,6 @@
 "use client";
 
+import { PasswordInput } from "@/components/PasswordInput";
 import Link from "next/link";
 import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -10,12 +11,12 @@ import { FieldError, FormBanner, SubmitButton } from "@/components/Form";
 import { AuthScreen } from "@/components/AuthScreen";
 
 function LoginForm() {
-  const [state, action] = useActionState(loginAction, idle);
+  const [state, action, statePending] = useActionState(loginAction, idle);
   const next = useSearchParams().get("next") ?? "/";
 
   return (
     <form action={action} className="flex flex-col gap-4">
-      <FormBanner state={state} />
+      <FormBanner pending={statePending} state={state} />
       <input type="hidden" name="next" value={next} />
       <div>
         <label className="pv-label" htmlFor="email">
@@ -28,10 +29,9 @@ function LoginForm() {
         <label className="pv-label" htmlFor="password">
           Password
         </label>
-        <input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           className="pv-input"
           required
           autoComplete="current-password"
