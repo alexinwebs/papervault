@@ -30,15 +30,13 @@ export default async function HomePage() {
                 previous eyebrow line would just repeat it. */}
             <LogoWordmark width={300} priority className="max-w-full" />
             <h1 className="pv-h1 mt-5">
-              Find.
+              Your next exam.
               <br />
-              Learn.
-              <br />
-              Contribute.
+              The right past papers.
             </h1>
             <p className="mt-4 max-w-md font-mono text-sm leading-relaxed">
-              A student-powered archive of question papers for engineering and higher-education
-              colleges across India.
+              Find past papers by college, subject and test. Read public papers without an
+              account, share one organised collection with your class, and fill the gaps together.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <Link href="/colleges" className="pv-btn-primary">
@@ -48,7 +46,8 @@ export default async function HomePage() {
                 Explore papers
               </Link>
             </div>
-            <div className="mt-5 max-w-xl lg:hidden">
+            <p className="mt-4 text-sm text-ink/80">Free to read. No upload required to download public papers.</p>
+            <div className="mt-5 max-w-xl">
               <Suspense fallback={null}>
                 <GlobalSearch id="global-search-hero" />
               </Suspense>
@@ -79,6 +78,12 @@ export default async function HomePage() {
           </div>
         </div>
       </Panel>
+
+      <section aria-label="Start here" className="grid min-w-0 gap-3 md:grid-cols-3">
+        <Link href="/colleges" className="pv-card-interactive p-4"><h2 className="font-mono font-bold">1. Find your collection</h2><p className="mt-2 text-sm text-ink/70">Choose your college, branch and semester. Pin your college when you sign in.</p></Link>
+        <Link href="/requests" className="pv-card-interactive p-4"><h2 className="font-mono font-bold">2. Help with a real gap</h2><p className="mt-2 text-sm text-ink/70">See which past papers classmates have requested. Contribute a permitted copy you already have.</p></Link>
+        <Link href="/guide" className="pv-card-interactive p-4"><h2 className="font-mono font-bold">3. Know what to trust</h2><p className="mt-2 text-sm text-ink/70">Check subject codes, sessions and review labels. Learn how sharing and moderation work.</p></Link>
+      </section>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-6">
@@ -121,7 +126,7 @@ export default async function HomePage() {
             <div className="mt-3 grid grid-cols-2 gap-3">
               <StatsCard value={formatCount(stats.colleges)} label="Colleges" />
               <StatsCard value={formatCount(stats.papers)} label="Papers" />
-              <StatsCard value={formatCount(stats.students)} label="Students" />
+              <StatsCard value={formatCount(stats.students)} label="Accounts" />
               <StatsCard value={formatCount(stats.contributors)} label="Contributors" />
             </div>
             <p className="mt-3 font-sans text-[11px] text-ink/60">
@@ -163,8 +168,8 @@ export default async function HomePage() {
               Search for it. If it is not in the archive yet, you can request it — or upload the copy
               you already have.
             </p>
-            <Link href="/upload" className="pv-btn-primary mt-3">
-              Contribute a paper
+            <Link href="/requests" className="pv-btn-primary mt-3">
+              See papers wanted
             </Link>
           </Panel>
         </div>

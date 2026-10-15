@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { ShareButton } from "@/components/ShareButton";
 import { Breadcrumbs, EmptyState, PageHeading } from "@/components/ui";
 import { semesterByNumber } from "@/server/repositories/academics";
-import { branchHref, collegeHref, programHref, subjectHref } from "@/lib/links";
+import { branchHref, collegeHref, programHref, semesterHref, subjectHref } from "@/lib/links";
 
 type Params = {
   params: Promise<{ college: string; program: string; branch: string; semester: string }>;
@@ -43,7 +43,8 @@ export default async function SemesterPage({ params }: Params) {
       <PageHeading
         eyebrow={`${branch.program.college.shortName} · ${branch.program.name} ${branch.code}`}
         title={`Semester ${number}`}
-        description="Choose a subject to see its papers by exam type and year."
+        description="Choose a subject to see its papers by exam type and year. Share this collection with your class instead of forwarding files one by one."
+        aside={<ShareButton path={semesterHref(collegeSlug, programSlug, branchSlug, number)} title={`${branch.program.college.shortName} · ${branch.code} · Semester ${number}`} />}
       />
 
       {found.subjects.length === 0 ? (
@@ -52,7 +53,8 @@ export default async function SemesterPage({ params }: Params) {
         <ul className="flex flex-col gap-2">
           {found.subjects.map((subject) => (
             <li key={subject.id}>
-              <Link
+              {/* A document link avoids a stalled client-router transition into a subject. */}
+              <a
                 href={subjectHref(collegeSlug, programSlug, branchSlug, number, subject.slug)}
                 className="pv-row justify-between hover:bg-cream"
               >
@@ -61,7 +63,7 @@ export default async function SemesterPage({ params }: Params) {
                   <span className="block font-sans text-[11px] text-ink/60">{subject.code}</span>
                 </span>
                 <span className="font-mono text-xs">Open →</span>
-              </Link>
+              </a>
             </li>
           ))}
         </ul>

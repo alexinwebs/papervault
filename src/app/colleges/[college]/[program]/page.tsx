@@ -43,7 +43,7 @@ export default async function ProgramPage({ params }: Params) {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {program.branches.map((branch) => (
-            <Link
+            <Link prefetch={false}
               key={branch.id}
               href={branchHref(collegeSlug, programSlug, branch.slug)}
               className="pv-card-interactive block px-4 py-4"

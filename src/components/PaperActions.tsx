@@ -4,6 +4,7 @@ import { SuccessPopup } from "@/components/SuccessPopup";
 import { useActionState, useState } from "react";
 import { Bookmark, BookmarkCheck, Flag } from "lucide-react";
 import { reportPaperAction, toggleBookmarkAction, requestPaperAction } from "@/server/actions/papers";
+import { safeLocalPath } from "@/lib/utils";
 import { idle } from "@/server/actions/types";
 import { reportUserAction } from "@/server/actions/support";
 import { REPORT_REASONS, REPORT_REASON_LABEL, USER_REPORT_REASONS, USER_REPORT_REASON_LABEL } from "@/lib/constants";
@@ -85,16 +86,18 @@ export function RequestPaperButton({
   examTypeId,
   academicYear,
   signedIn,
+  returnTo,
 }: {
   subjectId: string;
   examTypeId: string;
   academicYear: number;
   signedIn: boolean;
+  returnTo?: string;
 }) {
   const [state, action, statePending] = useActionState(requestPaperAction, idle);
   if (!signedIn) {
     return (
-      <a href="/login?next=/colleges" className="pv-btn-primary">
+      <a href={`/login?next=${encodeURIComponent(safeLocalPath(returnTo, "/requests"))}`} className="pv-btn-primary">
         Sign in to request
       </a>
     );

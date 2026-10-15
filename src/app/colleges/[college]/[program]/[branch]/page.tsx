@@ -47,7 +47,7 @@ export default async function BranchPage({ params }: Params) {
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
           {branch.semesters.map((semester) => (
-            <Link
+            <Link prefetch={false}
               key={semester.id}
               href={semesterHref(collegeSlug, programSlug, branchSlug, semester.number)}
               className="pv-card-interactive px-3 py-4 text-center"

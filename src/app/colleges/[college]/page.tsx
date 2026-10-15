@@ -12,6 +12,7 @@ import { branchHref, programHref } from "@/lib/links";
 import { formatCount } from "@/lib/utils";
 import { getSessionUser } from "@/lib/auth";
 import { pinnedCollegeIds } from "@/server/services/pins";
+import { ShareButton } from "@/components/ShareButton";
 import { PinCollegeButton } from "@/components/PinCollegeButton";
 
 type Params = { params: Promise<{ college: string }> };
@@ -66,6 +67,8 @@ export default async function CollegePage({ params }: Params) {
                 <BadgeCheck className="h-3 w-3" aria-hidden /> Verified college
               </span>
             ) : null}
+            <ShareButton path={`/colleges/${college.slug}`} title={`${college.shortName} past papers`} />
+            <Link prefetch={false} href={`/requests?college=${encodeURIComponent(college.slug)}`} className="pv-btn-secondary">Papers wanted</Link>
             <PinCollegeButton
               collegeId={college.id}
               collegeName={college.name}
@@ -88,7 +91,7 @@ export default async function CollegePage({ params }: Params) {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {college.programs.map((program) => (
-              <Link
+              <Link prefetch={false}
                 key={program.id}
                 href={programHref(college.slug, program.slug)}
                 className="pv-card-interactive block px-4 py-3"
@@ -142,7 +145,7 @@ export default async function CollegePage({ params }: Params) {
             title="Nothing published yet."
             body="Be the first contributor for this college."
             action={
-              <Link href="/upload" className="pv-btn-primary">
+              <Link prefetch={false} href="/upload" className="pv-btn-primary">
                 Upload a paper
               </Link>
             }

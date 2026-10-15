@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { availableRequestSlots } from "./request-availability";
+import { requestSlotKey } from "@/lib/request-slots";
 import { notFound } from "@/lib/errors";
 import type { SessionUser } from "@/lib/auth";
 import { paperCardInclude } from "../repositories/papers";
@@ -48,7 +50,8 @@ export async function myLibrary(userId: string) {
       },
     }),
   ]);
-  return { saved, recent, uploads, requests };
+  const available = await availableRequestSlots(requests);
+  return { saved, recent, uploads, requests: requests.map(request => ({ ...request, fulfilled: available.has(requestSlotKey(request)) })) };
 }
 
 export async function contributorProfile(userId: string) {
@@ -58,10 +61,11 @@ export async function contributorProfile(userId: string) {
   });
   if (!user) throw notFound("Contributor");
   const [published, verified, helpfulReports, history] = await prisma.$transaction([
-    prisma.paper.count({ where: { uploadedById: userId, status: "PUBLISHED" } }),
+    prisma.paper.count({ where: { uploadedById: userId, status: "PUBLISHED", restricted: false } }),
     prisma.paper.count({
       where: {
         uploadedById: userId,
+        status: "PUBLISHED", restricted: false,
         verification: { in: ["MODERATOR_VERIFIED", "COLLEGE_VERIFIED"] },
       },
     }),

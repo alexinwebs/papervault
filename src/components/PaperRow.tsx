@@ -28,7 +28,8 @@ export function PaperRow({ paper, showCollege = true }: { paper: Paper; showColl
         <p className="paper-row-title truncate font-mono text-sm font-bold">{paper.title}</p>
         <p className="mt-[2px] text-[11px] text-ink/70">
           {showCollege ? `${ctx.college.shortName} · ` : ""}
-          {ctx.program.name} {ctx.branch.code} · Semester {ctx.semesterNumber}
+          {ctx.program.name} {ctx.branch.code} · Semester {ctx.semesterNumber} · {ctx.subject.code}
+          {ctx.sessionLabel ? ` · ${ctx.sessionLabel}` : ""}
           {ctx.setLabel !== "Set A" ? ` · ${ctx.setLabel}` : ""}
         </p>
       </div>

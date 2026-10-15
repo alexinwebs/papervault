@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ShieldAlert } from "lucide-react";
 import { Breadcrumbs, Chip, EmptyState, Panel, SectionHeader } from "@/components/ui";
+import { ShareButton } from "@/components/ShareButton";
 import { PaperViewer } from "@/components/PaperViewer";
 import { BookmarkButton, ReportDialog } from "@/components/PaperActions";
 import { PaperList } from "@/components/PaperRow";
@@ -119,6 +120,7 @@ export default async function PaperPage({ params, searchParams }: Params) {
                   Sign in to save
                 </Link>
               )}
+              {paper.status === "PUBLISHED" && !paper.restricted ? <ShareButton path={`/papers/${paper.id}`} title={`${paper.title} · ${ctx.examType.name} ${ctx.academicYear}`} label="Share paper" /> : null}
               {user ? <ReportDialog paperId={paper.id} /> : null}
               {user && isStaff(user.role) ? (
                 <Link href={`/moderation/${paper.id}`} className="pv-btn-secondary">
@@ -172,6 +174,7 @@ export default async function PaperPage({ params, searchParams }: Params) {
         <div className="flex min-w-0 flex-col gap-4">
           <Panel className="px-4 py-4">
             <h2 className="pv-section-title">Details</h2>
+            <p className="mt-2 text-xs text-ink/70">Check the printed code and test/session against your syllabus. A review label is not a guarantee of authenticity or college endorsement. <Link href="/guide#review-labels" className="pv-link">What do labels mean?</Link></p>
             <dl className="mt-3 flex flex-col gap-2 font-sans text-sm">
               {[
                 ["College", ctx.college.name],

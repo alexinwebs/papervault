@@ -1,154 +1,93 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { parsePaperSearch, subjectSearchTerms } from "@/lib/search-query";
 import { PUBLIC_PAPER_WHERE, paperCardInclude } from "../repositories/papers";
 
-/**
- * Search abstraction.
- *
- * V1 resolves a free-text query into the archive's real dimensions —
- * college, branch, subject, exam type, year — and only then filters papers on
- * indexed foreign keys. That keeps the paper query flat and portable (deeply
- * nested relation OR-filters blow past SQLite's 64-table join limit and are
- * slow on Postgres too).
- *
- * Later tiers (OCR text, question-level index, embeddings) plug in behind this
- * same function without touching call sites.
- */
 export type SearchResults = Awaited<ReturnType<typeof searchEverything>>;
 
-function tokenize(query: string) {
-  return query
-    .split(/[\s,·/]+/)
-    .map((token) => token.trim())
-    .filter((token) => token.length > 1)
-    .slice(0, 8);
-}
-
+/** Resolve dimensions, then apply every remaining subject term within those dimensions.
+ * UI suggestions are capped; paper results are NOT limited to those suggestion IDs. */
 export async function searchEverything(rawQuery: string, page = 1, pageSize = 20) {
-  const query = rawQuery.trim();
-  if (!query) {
-    return { query, colleges: [], subjects: [], papers: [], paperTotal: 0, tokens: [] as string[] };
-  }
-  const tokens = tokenize(query);
-  const words = tokens.filter((token) => !/^\d{4}$/.test(token));
-  const years = tokens.filter((token) => /^\d{4}$/.test(token)).map(Number);
-
-  // 1. Dimensions the query mentions.
-  const [colleges, examTypes, branches] = await Promise.all([
-    prisma.college.findMany({
-      where: {
-        OR: words.flatMap((token) => [
-          { name: { contains: token, mode: "insensitive" as const } },
-          { shortName: { contains: token, mode: "insensitive" as const } },
-          { university: { contains: token, mode: "insensitive" as const } },
-          { city: { contains: token, mode: "insensitive" as const } },
-        ]),
-      },
-      take: 5,
+  const query = rawQuery.trim().slice(0, 200);
+  const { tokens, words, years } = parsePaperSearch(query);
+  const [suggestedColleges, examTypes, branches, exactColleges] = await Promise.all([
+    words.length ? prisma.college.findMany({
+      where: { OR: words.flatMap(token => [
+        { name: { contains: token, mode: "insensitive" as const } },
+        { shortName: { equals: token, mode: "insensitive" as const } },
+      ]) },
+      take: 5, orderBy: { name: "asc" },
       include: { programs: { select: { slug: true, name: true } } },
-    }),
-    prisma.examType.findMany({
-      where: {
-        OR: words.flatMap((token) => [{ code: { contains: token, mode: "insensitive" as const } }, { name: { contains: token, mode: "insensitive" as const } }]),
-      },
+    }) : Promise.resolve([]),
+    words.length ? prisma.examType.findMany({
+      where: { OR: words.map(token => ({ code: { equals: token, mode: "insensitive" as const } })) },
       select: { id: true, code: true },
-    }),
-    prisma.branch.findMany({
-      where: { archived: false, OR: words.map((token) => ({ code: { equals: token } })) },
-      select: { id: true },
-      take: 50,
-    }),
+    }) : Promise.resolve([]),
+    words.length ? prisma.branch.findMany({
+      where: { archived: false, program: { archived: false }, OR: words.map(token => ({ code: { equals: token, mode: "insensitive" as const } })) },
+      select: { id: true, code: true },
+    }) : Promise.resolve([]),
+    words.length ? prisma.college.findMany({
+      where: { OR: words.map(token => ({ shortName: { equals: token, mode: "insensitive" as const } })) },
+      take: 20, orderBy: { name: "asc" }, include: { programs: { select: { slug: true, name: true } } },
+    }) : Promise.resolve([]),
   ]);
-
-  const collegeIds = colleges.map((college) => college.id);
-  const examTypeIds = examTypes.map((examType) => examType.id);
-  const branchIds = branches.map((branch) => branch.id);
-
-  // 2. Subjects, narrowed by any college or branch the query named.
-  const subjectWords = words.filter(
-    (token) =>
-      !examTypes.some((examType) => examType.code.toLowerCase() === token.toLowerCase()) &&
-      !colleges.some((college) => college.shortName.toLowerCase() === token.toLowerCase()),
-  );
-
-  const subjects = await prisma.subject.findMany({
-    where: {
+  const colleges = [...new Map([...exactColleges, ...suggestedColleges].map(c => [c.id, c])).values()].slice(0, 5);
+  const scopedColleges = [...new Map([...exactColleges, ...suggestedColleges].map(c => [c.id, c])).values()].filter(college =>
+    words.some(word => word.toLowerCase() === college.shortName.toLowerCase()) ||
+    query.toLowerCase().includes(college.name.toLowerCase()));
+  const collegeWords = new Set(scopedColleges.filter(college => query.toLowerCase().includes(college.name.toLowerCase())).flatMap(college => college.name.toLowerCase().split(/\s+/)));
+  const subjectWords = words.filter(token =>
+    !examTypes.some(e => e.code.toLowerCase() === token.toLowerCase()) &&
+    !branches.some(b => b.code.toLowerCase() === token.toLowerCase()) &&
+    !scopedColleges.some(c => c.shortName.toLowerCase() === token.toLowerCase()) &&
+    !collegeWords.has(token.toLowerCase()));
+  // All explicit scopes apply together; choosing CSE must not discard the college scope.
+  const subjectCriteria: Prisma.SubjectWhereInput = {
+    archived: false,
+    semester: { branch: {
       archived: false,
-      ...(subjectWords.length > 0
-        ? {
-            OR: subjectWords.flatMap((token) => [
-              { name: { contains: token, mode: "insensitive" as const } },
-              { code: { contains: token, mode: "insensitive" as const } },
-            ]),
-          }
-        : {}),
-      ...(branchIds.length > 0 ? { semester: { branchId: { in: branchIds } } } : {}),
-      ...(collegeIds.length > 0 && branchIds.length === 0
-        ? { semester: { branch: { program: { collegeId: { in: collegeIds } } } } }
-        : {}),
-    },
-    take: 200,
-    orderBy: { name: "asc" },
-    include: {
-      semester: { include: { branch: { include: { program: { include: { college: true } } } } } },
-    },
+      ...(branches.length ? { id: { in: branches.map(b => b.id) } } : {}),
+      program: { archived: false, ...(scopedColleges.length ? { collegeId: { in: scopedColleges.map(c => c.id) } } : {}) },
+    } },
+    ...(subjectWords.length ? { AND: subjectWords.map(token => ({
+      OR: subjectSearchTerms(token).flatMap(term => [
+        { name: { contains: term, mode: "insensitive" as const } },
+        { code: { contains: term, mode: "insensitive" as const } },
+      ]),
+    })) } : {}),
+  };
+  const subjects = query ? await prisma.subject.findMany({
+    where: subjectCriteria, take: 8, orderBy: [{ name: "asc" }, { id: "asc" }],
+    include: { semester: { include: { branch: { include: { program: { include: { college: true } } } } } } },
+  }) : [];
+  const slot: Prisma.ExamSessionWhereInput = {
+    ...(examTypes.length ? { examTypeId: { in: examTypes.map(e => e.id) } } : {}),
+    ...(years.length ? { academicYear: { in: years } } : {}),
+  };
+  const scoped = scopedColleges.length > 0 || branches.length > 0 || examTypes.length > 0 || years.length > 0 || subjects.length > 0;
+  const where: Prisma.PaperWhereInput = !query ? PUBLIC_PAPER_WHERE : scoped ? {
+    ...PUBLIC_PAPER_WHERE,
+    OR: [
+      { paperSet: { examSession: { ...slot, subject: subjectCriteria } } },
+      { listings: { some: { subject: subjectCriteria } }, paperSet: { examSession: slot } },
+    ],
+  } : {
+    ...PUBLIC_PAPER_WHERE,
+    // No partial first-word title matches: every term must be present in the
+    // title/text combination when hierarchy lookup cannot resolve the query.
+    AND: (words.length ? words : [query]).map(word => ({ OR: [
+      { title: { contains: word, mode: "insensitive" } },
+      { extractedText: { contains: word, mode: "insensitive" } },
+    ] })),
+  };
+  const size = Math.max(1, Math.min(50, Math.floor(pageSize) || 20));
+  const paperTotal = await prisma.paper.count({ where });
+  const pages = Math.max(1, Math.ceil(paperTotal / size));
+  const currentPage = Math.min(pages, Math.max(1, Math.floor(page) || 1));
+  const papers = await prisma.paper.findMany({
+    where, include: paperCardInclude,
+    orderBy: [{ publishedAt: "desc" }, { id: "desc" }], skip: (currentPage - 1) * size, take: size,
   });
-
-  // 3. Flat paper filter on resolved ids.
-  const sessionFilter: Record<string, unknown> = {};
-  // Papers cross-listed under another branch's copy of the subject must turn
-  // up for "dbms it" just like ones uploaded there directly.
-  let listingSubject: Record<string, unknown> | null = null;
-  if (subjects.length > 0 && subjectWords.length > 0) {
-    sessionFilter.subjectId = { in: subjects.map((subject) => subject.id) };
-    listingSubject = { id: { in: subjects.map((subject) => subject.id) } };
-  } else if (branchIds.length > 0) {
-    sessionFilter.subject = { semester: { branchId: { in: branchIds } } };
-    listingSubject = { semester: { branchId: { in: branchIds } } };
-  } else if (collegeIds.length > 0) {
-    sessionFilter.subject = {
-      semester: { branch: { program: { collegeId: { in: collegeIds } } } },
-    };
-  }
-  const slotFilter: Record<string, unknown> = {};
-  if (examTypeIds.length > 0) slotFilter.examTypeId = { in: examTypeIds };
-  if (years.length > 0) slotFilter.academicYear = { in: years };
-  Object.assign(sessionFilter, slotFilter);
-
-  const matchedSomething = Object.keys(sessionFilter).length > 0;
-  // When the query does not resolve to anything in the hierarchy, fall back to
-  // the paper title and the text layer extracted from the PDF at upload time,
-  // so a phrase from inside a paper still finds it.
-  const freeText = (words.length > 0 ? words : [query]).filter((word) => word.length >= 3);
-  const paperWhere = matchedSomething
-    ? listingSubject
-      ? {
-          ...PUBLIC_PAPER_WHERE,
-          OR: [
-            { paperSet: { examSession: sessionFilter } },
-            { listings: { some: { subject: listingSubject } }, paperSet: { examSession: slotFilter } },
-          ],
-        }
-      : { ...PUBLIC_PAPER_WHERE, paperSet: { examSession: sessionFilter } }
-    : {
-        ...PUBLIC_PAPER_WHERE,
-        OR: [
-          { title: { contains: words[0] ?? query, mode: "insensitive" as const } },
-          ...(freeText.length > 0
-            ? [{ AND: freeText.map((word) => ({ extractedText: { contains: word, mode: "insensitive" as const } })) }]
-            : []),
-        ],
-      };
-
-  const [papers, paperTotal] = await prisma.$transaction([
-    prisma.paper.findMany({
-      where: paperWhere,
-      include: paperCardInclude,
-      orderBy: { publishedAt: "desc" },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-    prisma.paper.count({ where: paperWhere }),
-  ]);
-
-  return { query, colleges, subjects: subjects.slice(0, 8), papers, paperTotal, tokens };
+  return { query, colleges, subjects, papers, paperTotal, tokens, page: currentPage, pageSize: size, pages };
 }

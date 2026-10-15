@@ -222,15 +222,8 @@ export async function submitPaper(input: {
       : null,
   });
 
-  // A pending request for the same paper is now satisfiable.
-  await prisma.paperRequest.updateMany({
-    where: {
-      subjectId: chain.subject.id,
-      examTypeId: chain.examType.id,
-      academicYear: input.metadata.academicYear,
-    },
-    data: { fulfilled: true },
-  });
+  // A submission is not available until moderation publishes it. Request views
+  // derive availability from public papers rather than setting fulfillment here.
 
   // Approval request: tell the admins and college moderators there is work to
   // do. Delivery problems must never fail the upload the student just made.

@@ -137,7 +137,7 @@ export function Breadcrumbs({
         {items.map((item, i) => (
           <span key={`${item.label}-${i}`} className="flex items-center gap-1">
             {item.href ? (
-              <Link
+              <Link prefetch={false}
                 href={item.href}
                 // Breadcrumb type is deliberately small; the link keeps a 24px
                 // tall hit area so it is still a comfortable phone target.
@@ -230,6 +230,8 @@ export function Pagination({
     return qs ? `?${qs}` : "?";
   };
 
+  // Query pagination uses ordinary document navigation: it works before hydration
+  // and avoids a stalled client-router Flight response leaving old results visible.
   const first = (page - 1) * perPage + 1;
   const last = Math.min(page * perPage, total);
 
@@ -241,9 +243,9 @@ export function Pagination({
       {pages > 1 ? (
         <div className="flex items-center gap-2">
           {page > 1 ? (
-            <Link href={href(page - 1)} prefetch={false} className="pv-btn-secondary px-3 py-1 text-[11px]">
+            <a href={href(page - 1)} className="pv-btn-secondary px-3 py-1 text-[11px]">
               Previous
-            </Link>
+            </a>
           ) : (
             <span className="px-3 py-1 font-mono text-[11px] text-ink/35">Previous</span>
           )}
@@ -251,9 +253,9 @@ export function Pagination({
             Page {page} of {pages}
           </span>
           {page < pages ? (
-            <Link href={href(page + 1)} prefetch={false} className="pv-btn-secondary px-3 py-1 text-[11px]">
+            <a href={href(page + 1)} className="pv-btn-secondary px-3 py-1 text-[11px]">
               Next
-            </Link>
+            </a>
           ) : (
             <span className="px-3 py-1 font-mono text-[11px] text-ink/35">Next</span>
           )}
