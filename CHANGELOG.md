@@ -1,5 +1,12 @@
 # Changelog
 
+## v15 navigation correction
+
+- Uses ordinary document links for semester subject rows and search subject results, rather
+  than relying on a client-router streamed transition. Disabling prefetch alone did not prevent
+  stalled subject navigation in GitHub CI. No CSP relaxation or longer test timeouts are used.
+- Adds desktop/phone document-request subject navigation and browser Back coverage.
+
 ## v15 — Discovery and contribution foundations
 
 - Adds public Papers Wanted, college filtering, prefilled contribution links and safe native/copy sharing.

@@ -33,7 +33,9 @@ new database migration or new third-party analytics service.
   keyboard controls and suggestion announcements.
 - `npm run launch:check`: read-only deployment checks for demo content and unsafe configuration.
 - MIT license metadata in both package manifests; existing third-party notices remain intact.
-- Academic-hierarchy links do not speculatively prefetch database-backed pages. Browser failures
+- Semester subject rows and search subject results use ordinary document links, so selecting
+  a subject does not depend on a streamed client-router transition. Other
+  academic-hierarchy links do not speculatively prefetch database-backed pages. Browser failures
   retain screenshots/traces and an HTML report for CI troubleshooting. CI refuses to reuse an
   unrelated server on port 3000.
 
@@ -115,6 +117,9 @@ Use `/api/healthz` plus the manual checklist in [LAUNCH-PLAN.md](LAUNCH-PLAN.md)
 - Check My Library counts, email delivery, reporting, scanner status and storage persistence.
 
 ## Known boundaries
+
+- The existing streamed layout requires JavaScript; ordinary navigation links do not mean
+  the entire application supports JavaScript-disabled browsers.
 
 - Request records currently identify subject + exam type + year, not an individual ST-1/ST-2
   session or set. The board discloses this. Printed session labels must still be checked.

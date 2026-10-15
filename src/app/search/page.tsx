@@ -97,7 +97,7 @@ export default async function SearchPage({
                   const college = branch.program.college;
                   return (
                     <li key={subject.id}>
-                      <Link
+                      <a
                         href={subjectHref(
                           college.slug,
                           branch.program.slug,
@@ -115,7 +115,7 @@ export default async function SearchPage({
                           </span>
                         </span>
                         <span className="font-mono text-xs">Open →</span>
-                      </Link>
+                      </a>
                     </li>
                   );
                 })}

@@ -36,3 +36,27 @@ test("invalid campus filter does not silently show other colleges", async ({ pag
   await expect(page.getByText("College not found.", { exact: true })).toBeVisible();
   await expect(page.getByTestId("wanted-paper")).toHaveCount(0);
 });
+
+// Subject selection must use a document request, not a client-router Flight transition.
+test("semester subject selection uses document navigation on desktop and phone", async ({ browser, baseURL }) => {
+  const semester = "/colleges/raj-kumar-goel-institute-of-technology/btech/cse/semester-5";
+  const target = `${semester}/database-management-systems`;
+  for (const width of [390, 1280]) {
+    const context = await browser.newContext({ baseURL, viewport: { width, height: 900 } });
+    try {
+      const page = await context.newPage();
+      await page.goto(semester);
+      await expect(page.getByRole("heading", { level: 1 })).toContainText("Semester 5");
+      const documentRequest = page.waitForRequest(request =>
+        request.isNavigationRequest() && request.resourceType() === "document" &&
+        new URL(request.url()).pathname === target);
+      await page.locator(`main a[href="${target}"]`).click();
+      await documentRequest;
+      await expect(page).toHaveURL(new RegExp(`${target}$`));
+      await expect(page.getByRole("heading", { level: 1 })).toContainText("Database Management Systems");
+      await page.goBack();
+      await expect(page).toHaveURL(new RegExp(`${semester}$`));
+      await expect(page.getByRole("heading", { level: 1 })).toContainText("Semester 5");
+    } finally { await context.close(); }
+  }
+});

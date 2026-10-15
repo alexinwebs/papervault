@@ -10,7 +10,7 @@ Playwright, Poppler 24.08.0 and Tesseract 5.5.1 with English/orientation models.
 Node.js 22 and must run again on the submitted pull request; local results do not replace it.
 Test-only settings and seeded accounts were confined to disposable test databases.
 
-## Final results
+## Initial v15 local results
 
 | Check | Result |
 | --- | --- |
@@ -37,6 +37,28 @@ not a measured accuracy rate across colleges, handwriting or poor-quality scans.
 
 User documents, test databases, local environment files, test storage, screenshots, traces and
 browser reports are not bundled in the source release.
+
+## GitHub CI follow-up
+
+The initial local results above did not reproduce a later GitHub CI failure: semester-to-subject
+navigation stalled in the hierarchy journey and was flaky in the student journey. Disabling
+prefetch alone was insufficient. The follow-up correction uses ordinary document links for
+semester subject rows and search subject results and adds a document-request desktop/phone
+regression. It does not weaken CSP, remove assertions or increase test timeouts.
+
+Follow-up local validation after the correction:
+
+- `npm run verify`: TypeScript and lint passed; 203 unit tests passed.
+- Fresh-build `npm run test:e2e -- --retries=0`: 118 passed, 5 skipped in 8.1 minutes.
+- The original hierarchy and student journeys passed, along with the new phone/desktop
+  document-request and browser Back regression.
+- GitHub `release/v15` commit `144ea35` matched the original release tree; the correction patch
+  targets that branch. CI must run again after pushing; these are local results, not a claim
+  that the GitHub follow-up run has passed.
+
+An exploratory no-JavaScript check also showed that the existing streamed layout needs
+JavaScript to reveal content. This correction does not establish full no-JavaScript support;
+the new regression verifies document navigation directly with ordinary browser settings.
 
 ## Regressions investigated
 

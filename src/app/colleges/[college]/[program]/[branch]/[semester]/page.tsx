@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ShareButton } from "@/components/ShareButton";
@@ -54,9 +53,9 @@ export default async function SemesterPage({ params }: Params) {
         <ul className="flex flex-col gap-2">
           {found.subjects.map((subject) => (
             <li key={subject.id}>
-              <Link
+              {/* A document link avoids a stalled client-router transition into a subject. */}
+              <a
                 href={subjectHref(collegeSlug, programSlug, branchSlug, number, subject.slug)}
-                prefetch={false}
                 className="pv-row justify-between hover:bg-cream"
               >
                 <span className="min-w-0">
@@ -64,7 +63,7 @@ export default async function SemesterPage({ params }: Params) {
                   <span className="block font-sans text-[11px] text-ink/60">{subject.code}</span>
                 </span>
                 <span className="font-mono text-xs">Open →</span>
-              </Link>
+              </a>
             </li>
           ))}
         </ul>
