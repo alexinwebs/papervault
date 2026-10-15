@@ -113,7 +113,7 @@ export default async function CollegesPage({
           title="No colleges matched."
           body="Try a shorter search, or clear the filters."
           action={
-            <Link href="/colleges" className="pv-btn-secondary">
+            <Link prefetch={false} href="/colleges" className="pv-btn-secondary">
               Clear filters
             </Link>
           }
@@ -137,12 +137,12 @@ export default async function CollegesPage({
           {pages > 1 ? (
             <nav className="mt-4 flex items-center gap-2" aria-label="Pagination">
               {page > 1 ? (
-                <Link href={qs({ page: page - 1 })} className="pv-btn-secondary">
+                <Link prefetch={false} href={qs({ page: page - 1 })} className="pv-btn-secondary">
                   ← Previous
                 </Link>
               ) : null}
               {page < pages ? (
-                <Link href={qs({ page: page + 1 })} className="pv-btn-secondary">
+                <Link prefetch={false} href={qs({ page: page + 1 })} className="pv-btn-secondary">
                   Next →
                 </Link>
               ) : null}

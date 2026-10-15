@@ -33,6 +33,7 @@ const PRIMARY = [
   { href: "/colleges", label: "Explore Colleges", icon: Search },
   { href: "/programs", label: "Programs", icon: BookOpen },
   { href: "/subjects", label: "Subjects", icon: FileText },
+  { href: "/requests", label: "Papers Wanted", icon: MessageSquare },
   { href: "/upload", label: "Upload Paper", icon: UploadCloud },
   { href: "/library", label: "My Library", icon: BookMarked },
 ];

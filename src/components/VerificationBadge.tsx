@@ -1,5 +1,6 @@
 import { BadgeCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
 import { VERIFICATION_LABEL, type Verification } from "@/lib/constants";
+import { verificationDescription } from "@/lib/verification";
 import { cx } from "@/lib/utils";
 
 export function VerificationBadge({
@@ -11,9 +12,10 @@ export function VerificationBadge({
   restricted?: boolean;
   className?: string;
 }) {
+  const description = verificationDescription(verification, restricted);
   if (restricted) {
     return (
-      <span className={cx("pv-chip bg-pink", className)}>
+      <span title={description} aria-label={description} className={cx("pv-chip bg-pink", className)}>
         <ShieldAlert className="h-3 w-3" aria-hidden /> Restricted
       </span>
     );
@@ -21,13 +23,13 @@ export function VerificationBadge({
   const label = VERIFICATION_LABEL[verification as Verification] ?? "Unverified";
   if (verification === "UNVERIFIED") {
     return (
-      <span className={cx("pv-chip bg-cream text-ink/70", className)}>
+      <span title={description} aria-label={description} className={cx("pv-chip bg-cream text-ink/70", className)}>
         <ShieldQuestion className="h-3 w-3" aria-hidden /> {label}
       </span>
     );
   }
   return (
-    <span className={cx("pv-chip bg-mint", className)}>
+    <span title={description} aria-label={description} className={cx("pv-chip bg-mint", className)}>
       <BadgeCheck className="h-3 w-3" aria-hidden /> {label}
     </span>
   );

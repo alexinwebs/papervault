@@ -13,6 +13,7 @@ import { NavigationTracker } from "./NavigationTracker";
 import { donationConfig } from "@/lib/features";
 
 const FOOTER_LINKS = [
+  { href: "/guide", label: "Start here" },
   { href: "/colleges", label: "Colleges" },
   { href: "/upload", label: "Contribute" },
   { href: "/statistics", label: "Statistics" },

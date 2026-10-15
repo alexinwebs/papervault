@@ -96,7 +96,7 @@ export const reportSchema = z.object({
 export const paperRequestSchema = z.object({
   subjectId: z.string().min(1),
   examTypeId: z.string().min(1),
-  academicYear: z.coerce.number().int().min(1990).max(currentYear + 1),
+  academicYear: z.coerce.number().int().min(1990).max(currentYear),
 });
 
 export const bookmarkSchema = z.object({ paperId: z.string().min(1) });

@@ -30,9 +30,17 @@ export default async function LibraryPage() {
     myPinnedColleges(user.id),
   ]);
 
+  const publishedUploads = uploads.filter(paper => paper.status === "PUBLISHED" && !paper.restricted);
+  const recordedDownloads = publishedUploads.reduce((total, paper) => total + paper.downloadCount, 0);
   return (
     <div className="flex flex-col gap-6">
       <PageHeading eyebrow="My library" title={`Hello, ${user.name.split(" ")[0]}`} />
+      <Panel className="bg-mint p-4" >
+        <h2 className="pv-section-title">Your contribution</h2>
+        <p className="mt-2 text-sm">{publishedUploads.length} published {publishedUploads.length === 1 ? "paper" : "papers"} · {recordedDownloads} recorded file downloads.</p>
+        <p className="mt-1 text-xs text-ink/70">Downloads are recorded events, not a count of unique students. Pending or restricted uploads are not counted here.</p>
+        <Link href="/requests" className="pv-btn-secondary mt-3">Find a paper you can contribute</Link>
+      </Panel>
 
       <section id="my-colleges" className="scroll-mt-24">
         <SectionHeader title={`My Colleges (${pins.length})`} />

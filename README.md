@@ -20,7 +20,7 @@ own, and help build a useful, moderated academic archive.
 College → Program → Branch → Semester → Subject → Exam type → Year/session → Paper
 ```
 
-This README covers v14 and its subsequent dependency-security and CI fixes. The source of truth
+This README covers v15 discovery/contribution improvements and the preceding v14 security/CI fixes. The source of truth
 for installed dependency versions is `package-lock.json`.
 
 ## Contents
@@ -49,6 +49,9 @@ for installed dependency versions is `package-lock.json`.
 ### Find and organise papers
 
 - Browse by college, program, branch, semester, subject, exam type and academic year.
+- Read public papers without signup; share college, semester, subject and public-paper links.
+- Find aggregate missing-paper demand on **Papers Wanted** (`/requests`), filtered by college.
+- Use paginated search with explicit subject aliases and hyphenated subject-code matching.
 - Search the archive, including extracted paper text when available.
 - Distinguish CT, ST, PUT, Mid-Sem and End-Sem papers with labelled, coloured badges.
 - Pin colleges, bookmark papers and return to your library.
@@ -69,6 +72,8 @@ for installed dependency versions is `package-lock.json`.
 
 - Discuss papers, request missing papers, report problems and contact support.
 - Receive in-app notifications; opening an individual notification marks it as read.
+- Check contribution/download totals in My Library; request availability follows public papers.
+- Read `/guide` for sharing, contributing and the limitations of review labels.
 - Receive account and moderation emails when a mail provider is configured.
 - Review, approve, reject, restrict or return submissions for changes.
 - Manage colleges, curriculum, papers, members, reports, email outbox and recycle bin.
@@ -554,6 +559,9 @@ storage/            Runtime local files; generated and not committed
 
 ## Documentation
 
+- [v15 upgrade and known boundaries](docs/UPGRADE-v15.md)
+- [v15 validation results and exclusions](docs/TEST-REPORT-v15.md)
+- [Launch checklist and one-batch pilot](docs/LAUNCH-PLAN.md)
 - [Deployment and operations](docs/DEPLOYMENT.md)
 - [Security model and known gaps](docs/SECURITY.md)
 - [Technical reference and feature details](docs/REFERENCE.md)
@@ -563,7 +571,8 @@ storage/            Runtime local files; generated and not committed
 - [Project phases and planning notes](docs/phases.md) — planning, not a promise of shipped features
 
 Package scripts in `package.json` provide `dev`, `build`, `start`, `verify`, `test:unit`,
-`test:integration`, `test:e2e`, `db:deploy`, `db:catalogue`, `db:studio` and `admin:create`.
+`test:integration`, `test:e2e`, `db:deploy`, `db:catalogue`, `db:studio`, `admin:create`
+and the read-only `launch:check`.
 `db:seed`/`setup` are destructive demo workflows. Reserve migration-development/schema-push tools
 for development; deploy reviewed migrations to production instead.
 

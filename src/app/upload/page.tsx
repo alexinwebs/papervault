@@ -20,9 +20,12 @@ export default async function UploadPage({ searchParams }: { searchParams: Promi
           <p className="text-sm">
             Uploads are tied to a contributor account so moderators can verify them.
           </p>
+          <p className="mt-2 text-sm text-ink/70">Have a paper classmates need? Keep a clear copy with its header and all pages. You can preview it, correct detected details and track moderator review in My Library. Only share material you have permission to upload.</p>
           <Link href={`/login?next=${encodeURIComponent(uploadPath(search))}`} className="pv-btn-primary mt-4">
             Sign in
           </Link>
+          <Link href="/requests" className="pv-link ml-4">See papers wanted</Link>
+          <p className="mt-3 text-xs text-ink/70">No account is needed to browse or read public papers.</p>
         </Panel>
       </div>
     );

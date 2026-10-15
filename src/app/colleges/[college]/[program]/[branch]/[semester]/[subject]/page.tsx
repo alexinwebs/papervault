@@ -10,6 +10,7 @@ import { requestCount } from "@/server/services/requests";
 import { prisma } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { branchHref, collegeHref, programHref, semesterHref, uploadHref } from "@/lib/links";
+import { ShareButton } from "@/components/ShareButton";
 import { cx } from "@/lib/utils";
 
 type Params = {
@@ -20,7 +21,7 @@ type Params = {
     semester: string;
     subject: string;
   }>;
-  searchParams: Promise<{ exam?: string }>;
+  searchParams: Promise<{ exam?: string; year?: string }>;
 };
 
 const parseSemester = (value: string) => {
@@ -46,7 +47,9 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function SubjectPage({ params, searchParams }: Params) {
   const p = await params;
-  const { exam } = await searchParams;
+  const search = await searchParams;
+  const exam = typeof search.exam === "string" ? search.exam.slice(0, 32) : undefined;
+  const rawYear = search.year;
   const number = parseSemester(p.semester);
   if (!number) notFound();
 
@@ -55,34 +58,43 @@ export default async function SubjectPage({ params, searchParams }: Params) {
 
   const branch = subject.semester.branch;
   const college = branch.program.college;
-  const [examTypes, papers, user] = await Promise.all([
+  const [examTypes, user] = await Promise.all([
     prisma.examType.findMany({ where: { collegeId: college.id }, orderBy: { sortOrder: "asc" } }),
-    publicPapersForSubject(subject.id, exam),
     getSessionUser(),
   ]);
-
   const activeExam = examTypes.find((t) => t.code === exam) ?? null;
+  const allPapers = await publicPapersForSubject(subject.id, activeExam?.code);
+  const collectionPath = `/colleges/${p.college}/${p.program}/${p.branch}/${p.semester}/${p.subject}`;
+  const currentYear = new Date().getFullYear();
+  const candidateYear = typeof rawYear === "string" ? Number(rawYear) : NaN;
+  const selectedYear = Number.isInteger(candidateYear) && candidateYear >= 1990 && candidateYear <= currentYear ? candidateYear : undefined;
+  const query = new URLSearchParams();
+  if (activeExam) query.set("exam", activeExam.code);
+  if (selectedYear) query.set("year", String(selectedYear));
+  const returnTo = query.size ? `${collectionPath}?${query}` : collectionPath;
+  const papers = selectedYear ? allPapers.filter(paper => paper.paperSet.examSession.academicYear === selectedYear) : allPapers;
   const byYear = new Map<number, typeof papers>();
   for (const paper of papers) {
     const year = paper.paperSet.examSession.academicYear;
     byYear.set(year, [...(byYear.get(year) ?? []), paper]);
   }
   const years = [...byYear.keys()].sort((a, b) => b - a);
-  const currentYear = new Date().getFullYear();
-  const requestYear = currentYear - 1;
+  const requestYear = selectedYear ?? currentYear - 1;
   const requests = activeExam
     ? await requestCount({ subjectId: subject.id, examTypeId: activeExam.id, academicYear: requestYear })
     : await requestCount({ subjectId: subject.id });
 
   const tab = (code: string | undefined, label: string) => {
-    const href = code
-      ? `/colleges/${p.college}/${p.program}/${p.branch}/${p.semester}/${p.subject}?exam=${code}`
-      : `/colleges/${p.college}/${p.program}/${p.branch}/${p.semester}/${p.subject}`;
-    const active = (code ?? undefined) === (exam ?? undefined);
+    const params = new URLSearchParams();
+    if (code) params.set("exam", code);
+    if (selectedYear) params.set("year", String(selectedYear));
+    const href = params.size ? `${collectionPath}?${params}` : collectionPath;
+    const active = (code ?? undefined) === (activeExam?.code ?? undefined);
     return (
       <Link
         key={label}
         href={href}
+        prefetch={false}
         aria-current={active ? "page" : undefined}
         className={cx(
           "pv-chip",
@@ -112,13 +124,16 @@ export default async function SubjectPage({ params, searchParams }: Params) {
         title={subject.name}
         description={`${subject.code}${subject.curriculumVersion ? ` · ${subject.curriculumVersion.label}` : ""}`}
         aside={
-          <Link
+          <div className="flex flex-wrap items-start gap-2">
+          <ShareButton path={returnTo} title={`${college.shortName} · ${subject.name} past papers`} />
+          <Link prefetch={false}
             href={uploadHref({ subjectId: subject.id, examType: activeExam?.code })}
             className="pv-btn-secondary"
             data-testid="contribute-link"
           >
             Contribute a paper
           </Link>
+          </div>
         }
       />
 
@@ -127,6 +142,13 @@ export default async function SubjectPage({ params, searchParams }: Params) {
         {examTypes.map((t) => tab(t.code, t.name))}
       </div>
 
+      <form action={collectionPath} method="get" className="flex flex-wrap items-end gap-3">
+        {activeExam ? <input type="hidden" name="exam" value={activeExam.code} /> : null}
+        <div><label htmlFor="paper-year" className="pv-label">Year / session start year</label><select id="paper-year" name="year" defaultValue={selectedYear ?? ""} className="pv-input">
+          <option value="">All years</option>{Array.from({ length: currentYear - 1989 }, (_, i) => currentYear - i).map(year => <option key={year} value={year}>{year}</option>)}
+        </select></div><button type="submit" className="pv-btn-secondary">Show year</button>
+        <p className="max-w-md text-xs text-ink/70">2025–26 is stored under 2025. Only request exams already held or officially released; never upcoming papers.</p>
+      </form>
       {papers.length === 0 ? (
         <Panel className="bg-yellow px-5 py-6">
           <p className="pv-eyebrow">Not in the archive yet</p>
@@ -145,11 +167,12 @@ export default async function SubjectPage({ params, searchParams }: Params) {
                 examTypeId={activeExam.id}
                 academicYear={requestYear}
                 signedIn={!!user}
+                returnTo={returnTo}
               />
             ) : (
               <p className="font-mono text-xs">Pick an exam type above to request a specific paper.</p>
             )}
-            <Link
+            <Link prefetch={false}
               href={uploadHref({ subjectId: subject.id, examType: activeExam?.code, year: requestYear })}
               className="pv-btn-secondary"
               data-testid="have-paper-link"

@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Global search. It is a plain GET form pointed at /search, so it works
@@ -17,7 +17,9 @@ export function GlobalSearch({
   id?: string;
 }) {
   const params = useSearchParams();
-  const [value, setValue] = useState(params.get("q") ?? "");
+  const query = params.get("q") ?? "";
+  const [value, setValue] = useState(query);
+  useEffect(() => setValue(query), [query]);
 
   return (
     <form role="search" action="/search" method="get" className="min-w-0 flex-1">
@@ -37,8 +39,8 @@ export function GlobalSearch({
           }`}
           autoComplete="off"
         />
-        <button type="submit" className="sr-only">
-          Search
+        <button type="submit" aria-label="Search" className="shrink-0 rounded-sm px-2 py-2 font-mono text-xs hover:bg-blue-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink">
+          Go
         </button>
       </div>
     </form>

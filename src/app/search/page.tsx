@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 import { CollegeCard } from "@/components/CollegeCard";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { PaperList } from "@/components/PaperRow";
-import { Chip, EmptyState, PageHeading, Panel, SectionHeader } from "@/components/ui";
+import { Chip, EmptyState, PageHeading, Panel, Pagination, SectionHeader } from "@/components/ui";
 import { searchEverything } from "@/server/services/search";
 import { searchSchema } from "@/server/validators";
 import { subjectHref, uploadHref } from "@/lib/links";
@@ -54,15 +54,21 @@ export default async function SearchPage({
       </Panel>
 
       {!q ? (
+        <>
         <EmptyState
-          title="Type a search to begin."
-          body="Try a college short name, a subject, an exam type, or a year."
+          title="Start with your college or browse recent papers."
+          body="Public papers are free to read without an account. Try a subject abbreviation, code, exam type or year."
           action={
             <Link href="/colleges" className="pv-btn-primary">
               Browse colleges instead
             </Link>
           }
         />
+        <section><SectionHeader title={`Recent papers (${results.paperTotal})`} />
+          <PaperList papers={results.papers} />
+          <Pagination page={results.page} pages={results.pages} total={results.paperTotal} perPage={results.pageSize} params={{ q }} label="papers" />
+        </section>
+        </>
       ) : (
         <div className="flex flex-col gap-6">
           {results.colleges.length > 0 ? (
@@ -116,6 +122,7 @@ export default async function SearchPage({
               </ul>
             </section>
           ) : null}
+          {results.paperTotal === 0 ? <p className="text-sm text-ink/70">Try the printed subject code, remove a year filter, or <Link href="/requests" className="pv-link">see papers wanted</Link>. We do not substitute unrelated papers for a missing match.</p> : null}
 
           <section>
             <SectionHeader title={`Papers (${results.paperTotal})`} />
@@ -130,7 +137,10 @@ export default async function SearchPage({
                 }
               />
             ) : (
-              <PaperList papers={results.papers} />
+              <>
+                <PaperList papers={results.papers} />
+                <div className="mt-4"><Pagination page={results.page} pages={results.pages} total={results.paperTotal} perPage={results.pageSize} params={{ q }} label="papers" /></div>
+              </>
             )}
           </section>
         </div>

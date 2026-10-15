@@ -1,5 +1,23 @@
 # Changelog
 
+## v15 — Discovery and contribution foundations
+
+- Adds public Papers Wanted, college filtering, prefilled contribution links and safe native/copy sharing.
+- Improves homepage guidance and public reading; adds `/guide` with review-label explanations.
+- Adds search pagination, recent-paper browsing, code/session normalization and explicit aliases.
+- Retains college/branch scopes and all subject terms, including empty matches; removes the
+  suggestion-ID cap on paper matching.
+- Fixes premature request fulfillment: public availability, including cross-listings, determines
+  request state rather than upload-time flags. Pending/restricted/deleted copies do not qualify.
+- Validates request account standing, email policy, active subject and same-college exam type.
+- Preserves subject/exam/year through request sign-in and adds subject-page year filtering.
+- Shows honest contribution/download totals and explains verification limitations.
+- Adds dropdown keyboard announcements, read-only launch checks, pilot and upgrade documentation.
+- Displays printed session labels/subject codes in listings and disables speculative subject-link
+  prefetch; browser failures retain screenshots, traces and an HTML report for diagnostics.
+- Adds regression tests; existing MIT and third-party notices are retained.
+
+
 ## v14 — Themed suggestions and safer detection retries
 
 - Replaces native college/branch datalist popups with searchable, keyboard-

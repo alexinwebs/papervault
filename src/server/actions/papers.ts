@@ -109,6 +109,8 @@ export async function requestPaperAction(
     const parsed = paperRequestSchema.safeParse(Object.fromEntries(formData));
     if (!parsed.success) return { ok: false, fieldErrors: zodErrors(parsed.error) };
     await requestPaper(user, parsed.data);
-    return { ok: true, message: "Request recorded. We will notify contributors from your college." };
+    revalidatePath("/requests");
+    revalidatePath("/library");
+    return { ok: true, message: "Request recorded. It helps contributors see which papers are wanted. Track availability in My Library." };
   });
 }

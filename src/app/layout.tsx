@@ -22,10 +22,10 @@ export const metadata: Metadata = {
     template: "%s · PaperVault",
   },
   description:
-    "A student-powered archive of question papers for engineering and higher-education colleges across India.",
+    "Find college past papers by subject, semester and test. Read public papers free, share collections with your class and contribute missing papers.",
   openGraph: {
     title: "PaperVault",
-    description: "Your college. Your papers. Find. Learn. Contribute.",
+    description: "Find the right past papers. Share one collection with your class.",
     url: siteUrl,
     siteName: "PaperVault",
     type: "website",

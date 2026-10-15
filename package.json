@@ -2,6 +2,7 @@
   "name": "papervault",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -23,7 +24,8 @@
     "db:catalogue": "SEED_MODE=catalogue tsx prisma/seed.ts",
     "postbuild": "node -e \"const fs=require('fs');fs.cpSync('public','.next/standalone/public',{recursive:true});fs.cpSync('.next/static','.next/standalone/.next/static',{recursive:true});fs.rmSync('.next/standalone/.env',{force:true})\"",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "db:purge-demo": "tsx prisma/purge-demo.ts"
+    "db:purge-demo": "tsx prisma/purge-demo.ts",
+    "launch:check": "tsx scripts/launch-check.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
